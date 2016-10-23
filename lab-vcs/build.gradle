@@ -1,0 +1,28 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+
+version = '1.0'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+//create a single Jar with all dependencies
+jar {
+    from {
+        configurations.compile.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    manifest {
+        attributes 'Main-Class': 'ru.mit.spbau.antonpp.vcs.Application'
+    }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+    compile 'org.slf4j:slf4j-api:1.7.20'
+    compile 'ch.qos.logback:logback-classic:1.1.7'
+}
