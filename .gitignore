@@ -1,3 +1,11 @@
+# IntelliJ
+/out/
+.idea
+*.iml
+
+# OSX files
+.DS_Store
+
 .gradle
 build/
 
