@@ -3,10 +3,12 @@ package ru.mit.spbau.antonpp.vcs.core.utils;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
@@ -49,47 +51,59 @@ public class Utils {
         return new String(java.nio.file.Files.readAllBytes(path));
     }
 
+    public static Path getCurrentDir() {
+        return Paths.get(System.getProperty("user.dir"));
+    }
+
+    public static @Nullable Path getWorkingDir() {
+        Path currentPath = getCurrentDir();
+        while (currentPath != null && !java.nio.file.Files.exists(getInternals(currentPath))) {
+            currentPath = currentPath.getParent();
+        }
+        return currentPath;
+    }
+
     public static Path getInternals(Path workingDir) {
-        return workingDir.resolveSibling(Constants.INTERNALS);
+        return workingDir.resolve(Constants.INTERNALS);
     }
 
     public static Path getHeadHashFile(Path workingDir) {
-        return getInternals(workingDir).resolveSibling(Constants.HEAD);
+        return getInternals(workingDir).resolve(Constants.HEAD);
     }
 
     public static Path getLogFile(Path workingDir) {
-        return getInternals(workingDir).resolveSibling(Constants.LOGS);
+        return getInternals(workingDir).resolve(Constants.LOGS);
     }
 
     public static Path getRevisionsDir(Path workingDir) {
-        return getInternals(workingDir).resolveSibling(Constants.REVISIONS);
+        return getInternals(workingDir).resolve(Constants.REVISIONS);
     }
 
     public static Path getRevisionDir(Path workingDir, String hash) {
-        return getRevisionsDir(workingDir).resolveSibling(hash);
+        return getRevisionsDir(workingDir).resolve(hash);
     }
 
     public static Path getRevisionParents(Path workingDir, String hash) {
-        return getRevisionDir(workingDir, hash).resolveSibling(Constants.PATH_REV_PARENTS);
+        return getRevisionDir(workingDir, hash).resolve(Constants.PATH_REV_PARENTS);
     }
 
     public static Path getRevisionIndex(Path workingDir, String hash) {
-        return getRevisionDir(workingDir, hash).resolveSibling(Constants.PATH_REV_INDEX);
+        return getRevisionDir(workingDir, hash).resolve(Constants.PATH_REV_INDEX);
     }
 
     public static Path getRevisionFiles(Path workingDir, String hash) {
-        return getRevisionDir(workingDir, hash).resolveSibling(Constants.PATH_REV_FILES);
+        return getRevisionDir(workingDir, hash).resolve(Constants.PATH_REV_FILES);
     }
 
     public static Path getStageDir(Path workingDir) {
-        return getInternals(workingDir).resolveSibling(Constants.PATH_STAGE);
+        return getInternals(workingDir).resolve(Constants.PATH_STAGE);
     }
 
     public static Path getStageIndex(Path workingDir) {
-        return getStageDir(workingDir).resolveSibling(Constants.PATH_STAGE_INDEX);
+        return getStageDir(workingDir).resolve(Constants.PATH_STAGE_INDEX);
     }
 
     public static Path getStageFiles(Path workingDir) {
-        return getStageDir(workingDir).resolveSibling(Constants.PATH_STAGE_FILES);
+        return getStageDir(workingDir).resolve(Constants.PATH_STAGE_FILES);
     }
 }

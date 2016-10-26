@@ -6,7 +6,7 @@ package ru.mit.spbau.antonpp.vcs.core.utils;
  */
 public class Constants {
 
-    public static final String INTERNALS = ".vcs-internals";
+    public static final String INTERNALS = "vcs-internals";
     public static final String LOGS = "log.txt";
     public static final String HEAD = "head.txt";
     public static final String REVISIONS = "revs";

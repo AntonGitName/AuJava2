@@ -1,6 +1,7 @@
 package ru.mit.spbau.antonpp.vcs.core;
 
 import com.google.common.hash.Hashing;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.StageAddException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.io.IOException;
@@ -36,14 +37,20 @@ public class Stage {
         return result;
     }
 
-    public void add(Path path) throws IOException {
-        final String hash = Utils.getHashForFile(workingDir, path).toString();
-        final Path stagedPath = Utils.getStageDir(workingDir).resolveSibling(hash);
-        Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
-        added.put(path, stagedPath);
+    public void add(Path path) throws StageAddException {
+        final String hash;
+        try {
+            hash = Utils.getHashForFile(workingDir, path).toString();
 
-        final byte[] bytes = String.format("%s %s\n", path, stagedPath).getBytes();
-        Files.write(Utils.getStageIndex(workingDir), bytes, StandardOpenOption.APPEND);
+            final Path stagedPath = Utils.getStageDir(workingDir).resolveSibling(hash);
+            Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
+            added.put(path, stagedPath);
+
+            final byte[] bytes = String.format("%s %s\n", path, stagedPath).getBytes();
+            Files.write(Utils.getStageIndex(workingDir), bytes, StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            throw new StageAddException("Could not read/write files.", e);
+        }
     }
 
     public String getFileHash(Path path) {

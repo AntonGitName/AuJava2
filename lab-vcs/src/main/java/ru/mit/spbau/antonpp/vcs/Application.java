@@ -31,8 +31,34 @@ public class Application {
     private final CommandClean commandClean = new CommandClean();
 
     public static void main(String[] args) {
-        Application app = new Application(args);
-        // graphStats.run();
+        final Application app = new Application(args);
+        app.run();
+    }
+
+    private void run() {
+        jc.getParsedCommand();
+        final String command = jc.getParsedCommand();
+        if (command.equals("add")) {
+            commandAdd.run();
+        } else if (command.equals("branch")) {
+//            commandBranch.run();
+        } else if (command.equals("checkout")) {
+//            commandCheckout.run();
+        } else if (command.equals("commit")) {
+//            commandCommit.run();
+        } else if (command.equals("init")) {
+            commandInit.run();
+        } else if (command.equals("merge")) {
+//            commandMerge.run();
+        } else if (command.equals("status")) {
+//            commandStatus.run();
+        } else if (command.equals("reset")) {
+//            commandReset.run();
+        } else if (command.equals("remove")) {
+//            commandRemove.run();
+        } else if (command.equals("clean")) {
+//            commandClean.run();
+        }
     }
 
 
@@ -46,6 +72,9 @@ public class Application {
         jc.addCommand(commandInit);
         jc.addCommand(commandMerge);
         jc.addCommand(commandStatus);
+        jc.addCommand(commandReset);
+        jc.addCommand(commandRemove);
+        jc.addCommand(commandClean);
 
         try {
             jc.parse(args);
