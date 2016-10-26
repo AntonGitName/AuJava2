@@ -24,9 +24,14 @@ jar {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.11'
 
+    // annotations
+    compile group: 'org.jetbrains', name: 'annotations', version: '15.0'
+    // hashing
     compile group: 'com.google.guava', name: 'guava', version: '13.0'
+    // logging
     compile 'org.slf4j:slf4j-api:1.7.20'
     compile 'ch.qos.logback:logback-classic:1.1.7'
+    // cli
     compile group: 'com.beust', name: 'jcommander', version: '1.48'
 
 }
