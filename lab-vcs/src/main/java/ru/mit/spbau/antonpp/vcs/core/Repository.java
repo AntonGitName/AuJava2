@@ -24,7 +24,7 @@ public class Repository {
 
     public Repository(@NotNull Path workingDir) throws FindRepositoryException {
         this.workingDir = workingDir;
-        head = getHead();
+        head = initHead();
         try {
             stage = new Stage(head, workingDir);
         } catch (IOException e) {
@@ -36,7 +36,7 @@ public class Repository {
         return stage;
     }
 
-    private Revision getHead() throws FindRepositoryException {
+    private Revision initHead() throws FindRepositoryException {
         final Path headHashPath = Utils.getHeadHashFile(workingDir);
         try {
             final String headHash = Utils.getFileContent(headHashPath);

@@ -1,5 +1,6 @@
 package ru.mit.spbau.antonpp.vcs.core;
 
+import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.io.IOException;
@@ -41,6 +42,7 @@ public class Revision {
         }
     }
 
+    @Nullable
     public String getFileHash(Path path) {
         if (files.containsKey(path)) {
             return files.get(path).getFileName().toString();
@@ -66,5 +68,9 @@ public class Revision {
 
     public String getHash() {
         return hash;
+    }
+
+    public String getShortHash() {
+        return hash.substring(0, 6) + "...";
     }
 }

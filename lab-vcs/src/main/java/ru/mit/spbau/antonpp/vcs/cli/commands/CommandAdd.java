@@ -21,7 +21,7 @@ public class CommandAdd extends CommandWithRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandAdd.class);
 
-    @Parameter(description = "Files to add to the index")
+    @Parameter(description = "Files to addChangesToStage to the index")
     private List<String> patterns;
 
     @Override
@@ -35,10 +35,10 @@ public class CommandAdd extends CommandWithRepository {
                 filter(x -> !Files.exists(x)).forEach(x -> System.out.printf("Could not find %s. Skipping\n", x));
         paths.stream().filter(Files::exists).forEach(path -> {
             try {
-                stage.add(path);
+                stage.addChangesToStage(path);
                 LOGGER.debug("File {} added to stage", path);
             } catch (StageAddException e) {
-                final String msg = "Could not add files to staging";
+                final String msg = "Could not addChangesToStage files to staging";
                 LOGGER.error(msg, e);
                 System.out.println(msg);
                 System.exit(1);

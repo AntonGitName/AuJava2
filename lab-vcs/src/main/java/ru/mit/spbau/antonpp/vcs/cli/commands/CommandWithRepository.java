@@ -18,9 +18,10 @@ public abstract class CommandWithRepository {
 
     protected Repository repository;
     protected Path currentDir;
+    protected Path workingDir;
 
     public void run() {
-        final Path workingDir = Utils.getWorkingDir();
+        workingDir = Utils.getWorkingDir();
         currentDir = Utils.getCurrentDir();
         if (workingDir == null) {
             final String msg = "Could not found repository root.";

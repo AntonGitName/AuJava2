@@ -1,12 +1,19 @@
 package ru.mit.spbau.antonpp.vcs.core;
 
 import com.google.common.hash.Hashing;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.StageAddException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -16,14 +23,20 @@ import java.util.stream.Collectors;
  */
 public class Stage {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(Stage.class);
+
+    public Revision getParent() {
+        return parent;
+    }
+
     private final Revision parent;
     private final Path workingDir;
-    private final Map<Path, Path> added;
+    private final Map<Path, Path> staged;
 
     public Stage(Revision parent, Path workingDir) throws IOException {
         this.parent = parent;
         this.workingDir = workingDir;
-        added = readIndex();
+        staged = readIndex();
     }
 
     private Map<Path, Path> readIndex() throws IOException {
@@ -37,36 +50,108 @@ public class Stage {
         return result;
     }
 
-    public void add(Path path) throws StageAddException {
-        final String hash;
+    private List<String> readIndexRecords() throws IOException {
+        return Files.readAllLines(Utils.getStageIndex(workingDir));
+    }
+
+    private void writeIndexRecordsFromCurrentMap() throws FileNotFoundException {
+        writeIndexRecords(staged.entrySet().stream()
+                .map(kv -> String.format("%s %s", kv.getKey(), kv.getValue()))
+                .collect(Collectors.toList()));
+    }
+
+    private void writeIndexRecords(List<String> index) throws FileNotFoundException {
+        try (final PrintWriter out = new PrintWriter(Utils.getStageIndex(workingDir).toFile())) {
+            index.forEach(out::println);
+        }
+    }
+
+    private void removeFile(Path path) throws IOException {
+        if (staged.containsKey(path)) {
+            final Path realPath = staged.get(path);
+            if (realPath == null) {
+                LOGGER.warn("File was already removed from stage");
+            } else {
+                Files.delete(realPath);
+                staged.put(path, null);
+                writeIndexRecordsFromCurrentMap();
+                LOGGER.debug("File marked for removal ({})", path);
+            }
+        } else {
+            String revisionHash = parent.getFileHash(path);
+            if (revisionHash == null) {
+                LOGGER.warn("File was already removed from stage and revision");
+            } else {
+                staged.put(path, null);
+                writeIndexRecordsFromCurrentMap();
+                LOGGER.debug("File marked for removal ({})", path);
+            }
+        }
+    }
+
+    private void addFile(Path path) throws IOException {
+        final String hash = Utils.getHashForFile(workingDir, path).toString();
+        if (staged.containsKey(path)) {
+            final String stagedHash = getFileHash(path);
+            if (stagedHash != null && stagedHash.equals(hash)) {
+                LOGGER.warn("Adding unchanged file");
+            } else {
+                if (stagedHash != null) {
+                    final Path realPath = staged.get(path);
+                    Files.delete(realPath);
+                }
+                final Path stagedPath = Utils.getStageDir(workingDir).resolve(hash);
+                Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
+                staged.put(path, stagedPath);
+                writeIndexRecordsFromCurrentMap();
+                LOGGER.debug("File added to stage ({})", path);
+            }
+        } else {
+            final String revisionHash = parent.getFileHash(path);
+            if (revisionHash == null || !revisionHash.equals(hash)) {
+                final Path stagedPath = Utils.getStageDir(workingDir).resolveSibling(hash);
+                Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
+                staged.put(path, stagedPath);
+                writeIndexRecordsFromCurrentMap();
+                LOGGER.debug("File added to stage ({})", path);
+            } else {
+                LOGGER.warn("Adding unchanged file");
+            }
+        }
+    }
+
+    public void addChangesToStage(Path path) throws StageAddException {
+        final boolean toRemove = !Files.exists(path);
         try {
-            hash = Utils.getHashForFile(workingDir, path).toString();
-
-            final Path stagedPath = Utils.getStageDir(workingDir).resolveSibling(hash);
-            Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
-            added.put(path, stagedPath);
-
-            final byte[] bytes = String.format("%s %s\n", path, stagedPath).getBytes();
-            Files.write(Utils.getStageIndex(workingDir), bytes, StandardOpenOption.APPEND);
+            if (toRemove) {
+                removeFile(path);
+            } else {
+                addFile(path);
+            }
         } catch (IOException e) {
             throw new StageAddException("Could not read/write files.", e);
         }
     }
 
+    @Nullable
     public String getFileHash(Path path) {
-        if (added.containsKey(path)) {
-            return added.get(path).getFileName().toString();
+        if (staged.containsKey(path)) {
+            if (staged.get(path) != null) {
+                return staged.get(path).getFileName().toString();
+            } else {
+                return null;
+            }
         }
-        return null;
+        throw new IllegalArgumentException("this file is not in stage");
     }
 
-    public Set<Path> listAddedFiles() {
-        return added.keySet();
+    public Set<Path> listStagedFiles() {
+        return staged.keySet();
     }
 
     public String commit() {
         final Set<Path> parentFiles = parent.listFiles();
-        final Set<Path> stagedFiles = listAddedFiles();
+        final Set<Path> stagedFiles = listStagedFiles();
 
         final List<Path> newFiles = stagedFiles.stream().filter(path -> parent.getFileHash(path) == null)
                 .collect(Collectors.toList());
@@ -114,7 +199,7 @@ public class Stage {
             final Map<Path, Path> newPaths = new HashMap<>(stagedFilesToCopy.size());
             for (final Path path : stagedFilesToCopy) {
                 final Path target = revisionFiles.resolve(path.getFileName());
-                Files.move(added.get(path), target);
+                Files.move(staged.get(path), target);
                 newPaths.put(path, target);
             }
 

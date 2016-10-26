@@ -51,7 +51,7 @@ public class Application {
         } else if (command.equals("merge")) {
 //            commandMerge.run();
         } else if (command.equals("status")) {
-//            commandStatus.run();
+            commandStatus.run();
         } else if (command.equals("reset")) {
 //            commandReset.run();
         } else if (command.equals("remove")) {

@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -23,14 +24,24 @@ public class Utils {
     private Utils() {
     }
 
+    public static List<Path> listFilesRecursivelyExceptInternls(Path workingDir) throws IOException {
+        return listFilesRecursively(workingDir, Collections.singletonList(getInternals(workingDir)));
+    }
+
     public static List<Path> listFilesRecursively(Path dir, List<Path> exclusions) throws IOException {
         final List<Path> result = new ArrayList<>();
         SimpleFileVisitor<Path> fileVisitor = new SimpleFileVisitor<Path>() {
+
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (exclusions.contains(file)) {
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (exclusions.contains(dir)) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (attrs.isRegularFile() && !attrs.isDirectory()) {
                     result.add(file);
                 }
@@ -101,6 +112,10 @@ public class Utils {
 
     public static Path getStageIndex(Path workingDir) {
         return getStageDir(workingDir).resolve(Constants.PATH_STAGE_INDEX);
+    }
+
+    public static Path getStageRemoved(Path workingDir) {
+        return getStageDir(workingDir).resolve(Constants.PATH_STAGE_REMOVED);
     }
 
     public static Path getStageFiles(Path workingDir) {

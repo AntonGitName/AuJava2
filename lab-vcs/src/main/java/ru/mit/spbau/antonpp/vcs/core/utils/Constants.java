@@ -18,6 +18,7 @@ public class Constants {
     public static final String PATH_STAGE = "stage";
     public static final String PATH_STAGE_INDEX = "index.txt";
     public static final String PATH_STAGE_FILES = "files";
+    public static final String PATH_STAGE_REMOVED = "removed.txt";
 
 
     private Constants() {
