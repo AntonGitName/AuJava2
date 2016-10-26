@@ -26,6 +26,9 @@ public class Application {
     private final CommandInit commandInit = new CommandInit();
     private final CommandMerge commandMerge = new CommandMerge();
     private final CommandStatus commandStatus = new CommandStatus();
+    private final CommandReset commandReset = new CommandReset();
+    private final CommandRemove commandRemove = new CommandRemove();
+    private final CommandClean commandClean = new CommandClean();
 
     public static void main(String[] args) {
         Application app = new Application(args);
