@@ -10,10 +10,7 @@ import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,22 +21,35 @@ import java.util.stream.Collectors;
 public class Stage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Stage.class);
-    private final Revision parent;
+    private final Revision parentRevision;
     private final Path workingDir;
     private final Map<Path, Path> staged;
+    @Nullable
+    private String branch;
 
-    public Stage(Revision parent, Path workingDir) throws RevisionCheckoutException {
-        this.parent = parent;
+    public Stage(Revision parentRevision, Path workingDir) throws RevisionCheckoutException {
+        this.parentRevision = parentRevision;
         this.workingDir = workingDir;
         try {
             staged = readIndex();
+            readBranch();
         } catch (IOException e) {
             throw new RevisionCheckoutException("Could not load stage files", e);
         }
     }
 
-    public Revision getParent() {
-        return parent;
+    @Nullable
+    public String getBranch() {
+        return branch;
+    }
+
+    public void setBranch(@Nullable String branch) throws IOException {
+        this.branch = branch;
+        writeBranch();
+    }
+
+    public Revision getParentRevision() {
+        return parentRevision;
     }
 
     public boolean isClear() throws StatusReadingException {
@@ -97,7 +107,7 @@ public class Stage {
                 LOGGER.debug("File marked for removal ({})", path);
             }
         } else {
-            String revisionHash = parent.getFileHash(path);
+            String revisionHash = parentRevision.getFileHash(path);
             if (revisionHash == null) {
                 LOGGER.warn("File was already removed from stage and revision");
             } else {
@@ -127,7 +137,7 @@ public class Stage {
                     final Path realPath = staged.get(path);
                     Files.delete(realPath);
                 }
-                final String revisionHash = parent.getFileHash(path);
+                final String revisionHash = parentRevision.getFileHash(path);
                 if (revisionHash != null && revisionHash.equals(hash)) {
                     LOGGER.debug("Removing file from stage because at is the same as in the last revision");
                     staged.remove(path);
@@ -137,7 +147,7 @@ public class Stage {
                 }
             }
         } else {
-            final String revisionHash = parent.getFileHash(path);
+            final String revisionHash = parentRevision.getFileHash(path);
             if (revisionHash == null || !revisionHash.equals(hash)) {
                 copyFileToStageDir(path, hash);
             } else {
@@ -147,11 +157,11 @@ public class Stage {
     }
 
     public void reset(Path path) throws NoSuchFileInRevisionException, ResetException {
-        if (parent.getFileHash(path) == null) {
+        if (parentRevision.getFileHash(path) == null) {
             throw new NoSuchFileInRevisionException();
         }
         try {
-            Files.copy(parent.getFileLocation(path), path, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(parentRevision.getFileLocation(path), path, StandardCopyOption.REPLACE_EXISTING);
             addChangesToStage(path);
         } catch (IOException | StageAddException e) {
             throw new ResetException(e);
@@ -197,7 +207,7 @@ public class Stage {
         final Map<Path, String> rightHash = new HashMap<>();
         stageModified.forEach(x -> rightHash.put(x, getFileHash(x)));
         stageAdded.forEach(x -> rightHash.put(x, getFileHash(x)));
-        unchanged.forEach(x -> rightHash.put(x, parent.getFileHash(x)));
+        unchanged.forEach(x -> rightHash.put(x, parentRevision.getFileHash(x)));
 
         final List<Path> allFilesSorted = new ArrayList<>(unchanged);
         allFilesSorted.addAll(stageAdded);
@@ -210,57 +220,74 @@ public class Stage {
         final List<Path> stagedFilesToCopy = new ArrayList<>(stageAdded);
         stagedFilesToCopy.addAll(stageModified);
 
-        if (Files.exists(Utils.getRevisionDir(workingDir, revisionHash))) {
-            LOGGER.warn("Revision with such hash is already exists. Just cleaning stage");
-            try {
-                for (final Path path : stagedFilesToCopy) {
-                    Files.delete(staged.get(path));
-                }
-                staged.clear();
-                writeIndexRecordsFromCurrentMap();
-            } catch (IOException e) {
-                throw new CommitException("Failed to commit. Possibly internal files are corrupted.", e);
+        try {
+            if (Files.exists(Utils.getRevisionDir(workingDir, revisionHash))) {
+                LOGGER.warn("Revision with such hash is already exists. Just cleaning stage");
+                deleteStageFiles(stagedFilesToCopy);
+            } else {
+                writeFiles(revisionHash, stagedFilesToCopy, unchanged);
+                writeParents(revisionHash);
+                updateBranches(revisionHash);
             }
-        } else {
-            try {
-                final Path revisionParents = Utils.getRevisionParents(workingDir, revisionHash);
-                final Path revisionIndex = Utils.getRevisionIndex(workingDir, revisionHash);
-                final Path revisionFiles = Utils.getRevisionFiles(workingDir, revisionHash);
+            staged.clear();
+            writeIndexRecordsFromCurrentMap();
+        } catch (IOException e) {
+            throw new CommitException("Failed to commit. Possibly internal files are corrupted.", e);
+        }
+        return revisionHash;
+    }
 
-                Files.createDirectories(revisionFiles);
-                Files.createFile(revisionIndex);
-                Files.createFile(revisionParents);
+    private void deleteStageFiles(List<Path> stagedFilesToCopy) throws IOException {
+        for (final Path path : stagedFilesToCopy) {
+            Files.delete(staged.get(path));
+        }
+    }
 
-                try (final PrintWriter out = new PrintWriter(revisionParents.toFile())) {
-                    out.println(parent.getHash());
-                }
-
-                final Map<Path, Path> newPaths = new HashMap<>(stagedFilesToCopy.size());
-                for (final Path path : stagedFilesToCopy) {
-                    final Path target = revisionFiles.resolve(staged.get(path).getFileName());
-                    Files.move(staged.get(path), target);
-                    newPaths.put(path, target);
-                }
-
-                try (final PrintWriter out = new PrintWriter(revisionIndex.toFile())) {
-                    for (final Path parentFile : unchanged) {
-                        out.printf("%s %s\n", parentFile, parent.getFileLocation(parentFile));
-                    }
-                    for (final Path stagedFileToCopy : stagedFilesToCopy) {
-                        out.printf("%s %s\n", stagedFileToCopy, newPaths.get(stagedFileToCopy));
-                    }
-                }
-
-                staged.clear();
-                writeIndexRecordsFromCurrentMap();
-
-            } catch (IOException e) {
-                throw new CommitException("Failed to commit. Possibly internal files are corrupted.", e);
-            }
+    private void writeFiles(String hash, List<Path> stagedFilesToCopy, List<Path> unchanged) throws IOException {
+        final Path revisionIndex = Utils.getRevisionIndex(workingDir, hash);
+        final Path revisionFiles = Utils.getRevisionFiles(workingDir, hash);
+        Files.createDirectories(revisionFiles);
+        final Map<Path, Path> newPaths = new HashMap<>(stagedFilesToCopy.size());
+        for (final Path path : stagedFilesToCopy) {
+            final Path target = revisionFiles.resolve(staged.get(path).getFileName());
+            Files.move(staged.get(path), target);
+            newPaths.put(path, target);
         }
 
+        try (final PrintWriter out = new PrintWriter(revisionIndex.toFile())) {
+            for (final Path parentFile : unchanged) {
+                out.printf("%s %s\n", parentFile, parentRevision.getFileLocation(parentFile));
+            }
+            for (final Path stagedFileToCopy : stagedFilesToCopy) {
+                out.printf("%s %s\n", stagedFileToCopy, newPaths.get(stagedFileToCopy));
+            }
+        }
+    }
 
-        return revisionHash;
+    private void writeParents(String revisionHash) throws IOException {
+        final Path revisionParents = Utils.getRevisionParents(workingDir, revisionHash);
+        Files.createFile(revisionParents);
+        try (final PrintWriter out = new PrintWriter(revisionParents.toFile())) {
+            out.println(parentRevision.getHash());
+        }
+    }
+
+    private void readBranch() throws IOException {
+        branch = Utils.getFileContent(Utils.getStageBranch(workingDir));
+    }
+
+    private void writeBranch() throws IOException {
+        if (branch != null) {
+            Files.write(Utils.getStageBranch(workingDir), branch.getBytes());
+        } else {
+            Files.write(Utils.getStageBranch(workingDir), "".getBytes());
+        }
+    }
+
+    private void updateBranches(String revisionHash) throws IOException {
+        final Map<String, String> branches = Utils.readBranches(workingDir);
+        branches.put(branch, revisionHash);
+        Utils.writeBranches(branches, workingDir);
     }
 
 }

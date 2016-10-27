@@ -38,6 +38,9 @@ public class CommandInit {
                 Files.createDirectories(Utils.getRevisionsDir(workingDir));
 
                 final String initialCommitHash = Hashing.md5().hashString("").toString();
+                final String branch = "master";
+                final String branchRecord = String.format("%s %s\n", branch, initialCommitHash);
+
                 // rev/files
                 Files.createDirectories(Utils.getRevisionFiles(workingDir, initialCommitHash));
                 // rev/parents.txt
@@ -47,6 +50,8 @@ public class CommandInit {
 
                 // stage/index.txt
                 Files.createFile(Utils.getStageIndex(workingDir));
+                // stage/branch.txt
+                Files.createFile(Utils.getStageBranch(workingDir));
                 // stage/files
                 Files.createDirectories(Utils.getStageFiles(workingDir));
 
@@ -54,6 +59,8 @@ public class CommandInit {
                 Files.write(Utils.getHeadHashFile(workingDir), initialCommitHash.getBytes());
                 // /log.txt
                 Files.write(Utils.getLogFile(workingDir), "".getBytes());
+                // /branches.txt
+                Files.write(Utils.getBranchesFile(workingDir), branchRecord.getBytes());
 
                 LOGGER.info("Commit {} created in {}", initialCommitHash, workingDir);
 

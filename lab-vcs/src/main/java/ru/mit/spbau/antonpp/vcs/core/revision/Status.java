@@ -27,7 +27,7 @@ public class Status {
         this.stage = stage;
         this.workingDir = workingDir;
 
-        final Set<Path> revisionFiles = stage.getParent().listFiles();
+        final Set<Path> revisionFiles = stage.getParentRevision().listFiles();
         final Set<Path> stagedFiles = stage.listStagedFiles();
         final List<Path> allCurrentFiles;
         try {
@@ -54,7 +54,7 @@ public class Status {
 
             final Map<Path, String> stageOverall = new HashMap<>();
             for (final Path path : unchanged) {
-                stageOverall.put(path, stage.getParent().getFileHash(path));
+                stageOverall.put(path, stage.getParentRevision().getFileHash(path));
             }
             for (final Path path : stageModified) {
                 stageOverall.put(path, stage.getFileHash(path));
@@ -105,7 +105,7 @@ public class Status {
     public String toString() {
         final Path dir = Utils.getCurrentDir();
         final StringBuilder sb = new StringBuilder();
-        sb.append(String.format("Last revision md5: %s...\n", stage.getParent().getShortHash()));
+        sb.append(String.format("On branch %s\n\n", stage.getBranch()));
         sb.append("Changes to be committed:\n\n");
         stageAdded.stream().map(dir::relativize).forEach(x -> sb.append(String.format("\tA\t%s\n", x)));
         stageModified.stream().map(dir::relativize).forEach(x -> sb.append(String.format("\tM\t%s\n", x)));

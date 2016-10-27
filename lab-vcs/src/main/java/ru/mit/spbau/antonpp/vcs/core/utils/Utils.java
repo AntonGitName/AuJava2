@@ -5,15 +5,15 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Anton Mordberg
@@ -75,19 +75,19 @@ public class Utils {
     }
 
     public static Path getInternals(Path workingDir) {
-        return workingDir.resolve(Constants.INTERNALS);
+        return workingDir.resolve(Constants.GLOBAL_INTERNALS);
     }
 
     public static Path getHeadHashFile(Path workingDir) {
-        return getInternals(workingDir).resolve(Constants.HEAD);
+        return getInternals(workingDir).resolve(Constants.GLOBAL_HEAD);
     }
 
     public static Path getLogFile(Path workingDir) {
-        return getInternals(workingDir).resolve(Constants.LOGS);
+        return getInternals(workingDir).resolve(Constants.GLOBAL_LOGS);
     }
 
     public static Path getRevisionsDir(Path workingDir) {
-        return getInternals(workingDir).resolve(Constants.REVISIONS);
+        return getInternals(workingDir).resolve(Constants.GLOBAL_REVISIONS);
     }
 
     public static Path getRevisionDir(Path workingDir, String hash) {
@@ -95,30 +95,55 @@ public class Utils {
     }
 
     public static Path getRevisionParents(Path workingDir, String hash) {
-        return getRevisionDir(workingDir, hash).resolve(Constants.PATH_REV_PARENTS);
+        return getRevisionDir(workingDir, hash).resolve(Constants.REV_PARENTS);
     }
 
     public static Path getRevisionIndex(Path workingDir, String hash) {
-        return getRevisionDir(workingDir, hash).resolve(Constants.PATH_REV_INDEX);
+        return getRevisionDir(workingDir, hash).resolve(Constants.REV_INDEX);
     }
 
     public static Path getRevisionFiles(Path workingDir, String hash) {
-        return getRevisionDir(workingDir, hash).resolve(Constants.PATH_REV_FILES);
+        return getRevisionDir(workingDir, hash).resolve(Constants.REV_FILES);
     }
 
     public static Path getStageDir(Path workingDir) {
-        return getInternals(workingDir).resolve(Constants.PATH_STAGE);
+        return getInternals(workingDir).resolve(Constants.STAGE);
     }
 
     public static Path getStageIndex(Path workingDir) {
-        return getStageDir(workingDir).resolve(Constants.PATH_STAGE_INDEX);
+        return getStageDir(workingDir).resolve(Constants.STAGE_INDEX);
     }
 
-    public static Path getStageRemoved(Path workingDir) {
-        return getStageDir(workingDir).resolve(Constants.PATH_STAGE_REMOVED);
+    public static Path getStageBranch(Path workingDir) {
+        return getStageDir(workingDir).resolve(Constants.STAGE_BRANCH);
     }
 
     public static Path getStageFiles(Path workingDir) {
-        return getStageDir(workingDir).resolve(Constants.PATH_STAGE_FILES);
+        return getStageDir(workingDir).resolve(Constants.STAGE_FILES);
     }
+
+    public static Path getBranchesFile(Path workingDir) {
+        return getInternals(workingDir).resolve(Constants.GLOBAL_BRANCHES);
+    }
+
+    public static Map<String, String> readBranches(Path workingDir) throws IOException {
+        final Map<String, String> branchesMap = new HashMap<>();
+        final List<String> lines = java.nio.file.Files.readAllLines(Utils.getBranchesFile(workingDir));
+        for (final String line : lines) {
+            final String[] splittedLine = line.split(" ");
+            branchesMap.put(splittedLine[0], splittedLine[1]);
+        }
+        return branchesMap;
+    }
+
+    public static void writeBranches(Map<String, String> branchesMap, Path workingDir) throws FileNotFoundException {
+        try (final PrintWriter out = new PrintWriter(Utils.getBranchesFile(workingDir).toFile())) {
+            for (final Map.Entry<String, String> kv : branchesMap.entrySet()) {
+                out.printf("%s %s\n", kv.getKey(), kv.getValue());
+            }
+        }
+    }
+
+
+
 }

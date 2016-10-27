@@ -47,7 +47,7 @@ public class CommandCommit extends CommandWithRepository {
             System.out.println(msg);
             System.exit(1);
         }
-        final String shortHash = repository.getStage().getParent().getShortHash();
+        final String shortHash = repository.getStage().getParentRevision().getShortHash();
         final CommitInfo commitInfo = new CommitInfo(author, date, message, shortHash);
         try {
             commitInfo.saveToLog(workingDir);

@@ -1,6 +1,7 @@
 package ru.mit.spbau.antonpp.vcs.core;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.CheckoutIOException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.CheckoutStageNotClearException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.RevisionCheckoutException;
@@ -12,6 +13,7 @@ import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 /**
  * @author Anton Mordberg
@@ -55,12 +57,28 @@ public class Repository {
             throw new CheckoutStageNotClearException();
         }
         head = new Revision(workingDir, hash);
-        stage = new Stage(head, workingDir);
+        try {
+            stage = new Stage(head, workingDir);
+            stage.setBranch(getHeadBranch());
+        } catch (IOException e) {
+            throw new RevisionCheckoutException("Failed to read branches", e);
+        }
         try {
             Files.write(Utils.getHeadHashFile(workingDir), hash.getBytes());
         } catch (IOException e) {
             throw new CheckoutIOException("Failed to save head record", e);
         }
+    }
+
+    @Nullable
+    private String getHeadBranch() throws IOException {
+        final Map<String, String> branches = Utils.readBranches(workingDir);
+        for (final Map.Entry<String, String> entry : branches.entrySet()) {
+            if (entry.getValue().equals(head.getHash())) {
+                return entry.getKey();
+            }
+        }
+        return null;
     }
 
 }

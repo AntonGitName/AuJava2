@@ -6,20 +6,20 @@ package ru.mit.spbau.antonpp.vcs.core.utils;
  */
 public class Constants {
 
-    public static final String INTERNALS = "vcs-internals";
-    public static final String LOGS = "log.txt";
-    public static final String HEAD = "head.txt";
-    public static final String REVISIONS = "revs";
+    static final String GLOBAL_INTERNALS = "vcs-internals";
+    static final String GLOBAL_LOGS = "log.txt";
+    static final String GLOBAL_HEAD = "head.txt";
+    static final String GLOBAL_REVISIONS = "revs";
+    static final String GLOBAL_BRANCHES = "branches.txt";
 
-    public static final String PATH_REV_FILES = "files";
-    public static final String PATH_REV_PARENTS = "parents.txt";
-    public static final String PATH_REV_INDEX = "index.txt";
+    static final String REV_FILES = "files";
+    static final String REV_PARENTS = "parents.txt";
+    static final String REV_INDEX = "index.txt";
 
-    public static final String PATH_STAGE = "stage";
-    public static final String PATH_STAGE_INDEX = "index.txt";
-    public static final String PATH_STAGE_FILES = "files";
-    public static final String PATH_STAGE_REMOVED = "removed.txt";
-
+    static final String STAGE = "stage";
+    static final String STAGE_BRANCH = "branch.txt";
+    static final String STAGE_INDEX = "index.txt";
+    static final String STAGE_FILES = "files";
 
     private Constants() {
 
