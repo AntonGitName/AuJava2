@@ -37,7 +37,7 @@ public class CommandInit {
                 Files.createDirectories(Utils.getStageFiles(workingDir));
                 Files.createDirectories(Utils.getRevisionsDir(workingDir));
 
-                final String initialCommitHash = Hashing.md5().hashInt(239).toString();
+                final String initialCommitHash = Hashing.md5().hashString("").toString();
                 // rev/files
                 Files.createDirectories(Utils.getRevisionFiles(workingDir, initialCommitHash));
                 // rev/parents.txt

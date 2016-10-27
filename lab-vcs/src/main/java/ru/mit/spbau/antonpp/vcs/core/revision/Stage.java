@@ -210,40 +210,53 @@ public class Stage {
         final List<Path> stagedFilesToCopy = new ArrayList<>(stageAdded);
         stagedFilesToCopy.addAll(stageModified);
 
-        try {
-            final Path revisionParents = Utils.getRevisionParents(workingDir, revisionHash);
-            final Path revisionIndex = Utils.getRevisionIndex(workingDir, revisionHash);
-            final Path revisionFiles = Utils.getRevisionFiles(workingDir, revisionHash);
-
-            Files.createDirectories(revisionFiles);
-            Files.createFile(revisionIndex);
-            Files.createFile(revisionParents);
-
-            try (final PrintWriter out = new PrintWriter(revisionParents.toFile())) {
-                out.println(parent.getHash());
-            }
-
-            final Map<Path, Path> newPaths = new HashMap<>(stagedFilesToCopy.size());
-            for (final Path path : stagedFilesToCopy) {
-                final Path target = revisionFiles.resolve(staged.get(path).getFileName());
-                Files.move(staged.get(path), target);
-                newPaths.put(path, target);
-            }
-
-            try (final PrintWriter out = new PrintWriter(revisionIndex.toFile())) {
-                for (final Path parentFile : unchanged) {
-                    out.printf("%s %s\n", parentFile, parent.getFileLocation(parentFile));
+        if (Files.exists(Utils.getRevisionDir(workingDir, revisionHash))) {
+            LOGGER.warn("Revision with such hash is already exists. Just cleaning stage");
+            try {
+                for (final Path path : stagedFilesToCopy) {
+                    Files.delete(staged.get(path));
                 }
-                for (final Path stagedFileToCopy : stagedFilesToCopy) {
-                    out.printf("%s %s\n", stagedFileToCopy, newPaths.get(stagedFileToCopy));
-                }
+                staged.clear();
+                writeIndexRecordsFromCurrentMap();
+            } catch (IOException e) {
+                throw new CommitException("Failed to commit. Possibly internal files are corrupted.", e);
             }
+        } else {
+            try {
+                final Path revisionParents = Utils.getRevisionParents(workingDir, revisionHash);
+                final Path revisionIndex = Utils.getRevisionIndex(workingDir, revisionHash);
+                final Path revisionFiles = Utils.getRevisionFiles(workingDir, revisionHash);
 
-            staged.clear();
-            writeIndexRecordsFromCurrentMap();
+                Files.createDirectories(revisionFiles);
+                Files.createFile(revisionIndex);
+                Files.createFile(revisionParents);
 
-        } catch (IOException e) {
-            throw new CommitException("Failed to commit. Possibly internal files are corrupted.", e);
+                try (final PrintWriter out = new PrintWriter(revisionParents.toFile())) {
+                    out.println(parent.getHash());
+                }
+
+                final Map<Path, Path> newPaths = new HashMap<>(stagedFilesToCopy.size());
+                for (final Path path : stagedFilesToCopy) {
+                    final Path target = revisionFiles.resolve(staged.get(path).getFileName());
+                    Files.move(staged.get(path), target);
+                    newPaths.put(path, target);
+                }
+
+                try (final PrintWriter out = new PrintWriter(revisionIndex.toFile())) {
+                    for (final Path parentFile : unchanged) {
+                        out.printf("%s %s\n", parentFile, parent.getFileLocation(parentFile));
+                    }
+                    for (final Path stagedFileToCopy : stagedFilesToCopy) {
+                        out.printf("%s %s\n", stagedFileToCopy, newPaths.get(stagedFileToCopy));
+                    }
+                }
+
+                staged.clear();
+                writeIndexRecordsFromCurrentMap();
+
+            } catch (IOException e) {
+                throw new CommitException("Failed to commit. Possibly internal files are corrupted.", e);
+            }
         }
 
 
