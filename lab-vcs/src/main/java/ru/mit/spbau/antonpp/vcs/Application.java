@@ -57,8 +57,8 @@ public class Application {
             commandStatus.run();
         } else if (command.equals("reset")) {
             commandReset.run();
-        } else if (command.equals("remove")) {
-//            commandRemove.run();
+        } else if (command.equals("rm")) {
+            commandRemove.run();
         } else if (command.equals("clean")) {
             commandClean.run();
         }

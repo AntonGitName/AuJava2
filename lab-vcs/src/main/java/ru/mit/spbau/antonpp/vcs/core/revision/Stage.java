@@ -57,11 +57,14 @@ public class Stage {
 
     private Map<Path, Path> readIndex() throws IOException {
         final Map<Path, Path> result = new HashMap<>();
-        final Path stageIndex = Utils.getStageIndex(workingDir);
-        final List<String> lines = Files.readAllLines(stageIndex);
+        final List<String> lines = readIndexRecords();
         for (final String line : lines) {
             final String[] splittedLine = line.split(" ");
-            result.put(Paths.get(splittedLine[0]), Paths.get(splittedLine[1]));
+            if (splittedLine[1].equals("null")) {
+                result.put(Paths.get(splittedLine[0]), null);
+            } else {
+                result.put(Paths.get(splittedLine[0]), Paths.get(splittedLine[1]));
+            }
         }
         return result;
     }
