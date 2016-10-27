@@ -27,7 +27,7 @@ public class CommitInfo {
     }
 
     public void saveToLog(Path workingDir) throws LogWriteException {
-        final byte[] record = String.format("%19s %12s %6s \"%s\"\n", date, author, shortHash, msg).getBytes();
+        final byte[] record = String.format("\"%s\" \"%s\" \"%s\" \"%s\"\n", date, author, shortHash, msg).getBytes();
         try {
             Files.write(Utils.getLogFile(workingDir), record, StandardOpenOption.APPEND);
         } catch (IOException e) {

@@ -29,6 +29,7 @@ public class Application {
     private final CommandReset commandReset = new CommandReset();
     private final CommandRemove commandRemove = new CommandRemove();
     private final CommandClean commandClean = new CommandClean();
+    private final CommandLog commandLog = new CommandLog();
 
     public static void main(String[] args) {
         final Application app = new Application(args);
@@ -46,6 +47,8 @@ public class Application {
 //            commandCheckout.run();
         } else if (command.equals("commit")) {
             commandCommit.run();
+        } else if (command.equals("log")) {
+            commandLog.run();
         } else if (command.equals("init")) {
             commandInit.run();
         } else if (command.equals("merge")) {
@@ -75,6 +78,7 @@ public class Application {
         jc.addCommand(commandReset);
         jc.addCommand(commandRemove);
         jc.addCommand(commandClean);
+        jc.addCommand(commandLog);
 
         try {
             jc.parse(args);
