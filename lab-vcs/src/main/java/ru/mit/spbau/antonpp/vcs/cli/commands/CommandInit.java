@@ -52,6 +52,8 @@ public class CommandInit {
 
                 // /head.txt
                 Files.write(Utils.getHeadHashFile(workingDir), initialCommitHash.getBytes());
+                // /log.txt
+                Files.write(Utils.getLogFile(workingDir), "".getBytes());
 
                 LOGGER.info("Commit {} created in {}", initialCommitHash, workingDir);
 

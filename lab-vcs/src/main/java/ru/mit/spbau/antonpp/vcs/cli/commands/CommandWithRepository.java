@@ -3,7 +3,7 @@ package ru.mit.spbau.antonpp.vcs.cli.commands;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.Repository;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.FindRepositoryException;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.RevisionCheckoutException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.nio.file.Path;
@@ -32,7 +32,7 @@ public abstract class CommandWithRepository {
             LOGGER.debug("Found root at {}", workingDir);
             try {
                 repository = new Repository(workingDir);
-            } catch (FindRepositoryException e) {
+            } catch (RevisionCheckoutException e) {
                 final String msg = "Could not load repository files.";
                 LOGGER.error(msg, e);
                 System.out.println(msg);

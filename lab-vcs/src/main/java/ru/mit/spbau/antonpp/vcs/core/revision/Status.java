@@ -1,4 +1,4 @@
-package ru.mit.spbau.antonpp.vcs.core;
+package ru.mit.spbau.antonpp.vcs.core.revision;
 
 import ru.mit.spbau.antonpp.vcs.core.exceptions.StatusReadingException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
@@ -16,6 +16,22 @@ public class Status {
 
     private final Stage stage;
     private final Path workingDir;
+
+    public List<Path> getUnchanged() {
+        return unchanged;
+    }
+
+    public List<Path> getStageAdded() {
+        return stageAdded;
+    }
+
+    public List<Path> getStageModified() {
+        return stageModified;
+    }
+
+    public List<Path> getStageRemoved() {
+        return stageRemoved;
+    }
 
     private final List<Path> unchanged;
     private final List<Path> untracked;
@@ -88,7 +104,7 @@ public class Status {
     public String toString() {
         final Path dir = Utils.getCurrentDir();
         final StringBuilder sb = new StringBuilder();
-        sb.append(String.format("Last revision md5: %s\n", stage.getParent().getShortHash()));
+        sb.append(String.format("Last revision md5: %s...\n", stage.getParent().getShortHash()));
         sb.append("Changes to be committed:\n\n");
         stageAdded.stream().map(dir::relativize).forEach(x -> sb.append(String.format("\tA\t%s\n", x)));
         stageModified.stream().map(dir::relativize).forEach(x -> sb.append(String.format("\tM\t%s\n", x)));

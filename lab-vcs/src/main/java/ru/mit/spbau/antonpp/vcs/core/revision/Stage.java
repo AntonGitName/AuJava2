@@ -1,10 +1,13 @@
-package ru.mit.spbau.antonpp.vcs.core;
+package ru.mit.spbau.antonpp.vcs.core.revision;
 
 import com.google.common.hash.Hashing;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.CommitException;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.RevisionCheckoutException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.StageAddException;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.StatusReadingException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.io.FileNotFoundException;
@@ -24,19 +27,35 @@ import java.util.stream.Collectors;
 public class Stage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Stage.class);
+    private final Revision parent;
+    private final Path workingDir;
+    private final Map<Path, Path> staged;
+
+    public Stage(Revision parent, Path workingDir) throws RevisionCheckoutException {
+        this.parent = parent;
+        this.workingDir = workingDir;
+        try {
+            staged = readIndex();
+        } catch (IOException e) {
+            throw new RevisionCheckoutException("Could not load stage files", e);
+        }
+    }
 
     public Revision getParent() {
         return parent;
     }
 
-    private final Revision parent;
-    private final Path workingDir;
-    private final Map<Path, Path> staged;
+    public boolean isClear() throws StatusReadingException {
+        final Status status = new Status(this, workingDir);
 
-    public Stage(Revision parent, Path workingDir) throws IOException {
-        this.parent = parent;
-        this.workingDir = workingDir;
-        staged = readIndex();
+        LOGGER.debug("Stage status:");
+        LOGGER.debug("Added: {}", status.getStageAdded());
+        LOGGER.debug("Modified: {}", status.getStageModified());
+        LOGGER.debug("Removed: {}", status.getStageRemoved());
+
+        return status.getStageAdded().isEmpty()
+                && status.getStageModified().isEmpty()
+                && status.getStageRemoved().isEmpty();
     }
 
     private Map<Path, Path> readIndex() throws IOException {
@@ -100,7 +119,7 @@ public class Stage {
                     final Path realPath = staged.get(path);
                     Files.delete(realPath);
                 }
-                final Path stagedPath = Utils.getStageDir(workingDir).resolve(hash);
+                final Path stagedPath = Utils.getStageFiles(workingDir).resolve(hash);
                 Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
                 staged.put(path, stagedPath);
                 writeIndexRecordsFromCurrentMap();
@@ -109,7 +128,7 @@ public class Stage {
         } else {
             final String revisionHash = parent.getFileHash(path);
             if (revisionHash == null || !revisionHash.equals(hash)) {
-                final Path stagedPath = Utils.getStageDir(workingDir).resolveSibling(hash);
+                final Path stagedPath = Utils.getStageFiles(workingDir).resolve(hash);
                 Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
                 staged.put(path, stagedPath);
                 writeIndexRecordsFromCurrentMap();
@@ -149,48 +168,37 @@ public class Stage {
         return staged.keySet();
     }
 
-    public String commit() {
-        final Set<Path> parentFiles = parent.listFiles();
-        final Set<Path> stagedFiles = listStagedFiles();
+    public String commit() throws StatusReadingException, CommitException {
+        final Status status = new Status(this, workingDir);
 
-        final List<Path> newFiles = stagedFiles.stream().filter(path -> parent.getFileHash(path) == null)
-                .collect(Collectors.toList());
-
-        final List<Path> changedFiles = stagedFiles.stream().filter(path -> {
-            final String parentFileHash = parent.getFileHash(path);
-            return parentFileHash != null && !parentFileHash.equals(getFileHash(path));
-        }).collect(Collectors.toList());
-
-        final List<Path> unchangedFiles = stagedFiles.stream().filter(path -> {
-            final String parentFileHash = parent.getFileHash(path);
-            return parentFileHash != null && parentFileHash.equals(getFileHash(path));
-        }).collect(Collectors.toList());
+        final List<Path> unchanged = status.getUnchanged();
+        final List<Path> stageAdded = status.getStageAdded();
+        final List<Path> stageModified = status.getStageModified();
 
         final Map<Path, String> rightHash = new HashMap<>();
-        final StringBuilder sb = new StringBuilder();
-        changedFiles.forEach(x -> rightHash.put(x, getFileHash(x)));
-        newFiles.forEach(x -> rightHash.put(x, getFileHash(x)));
-        unchangedFiles.forEach(x -> rightHash.put(x, parent.getFileHash(x)));
+        stageModified.forEach(x -> rightHash.put(x, getFileHash(x)));
+        stageAdded.forEach(x -> rightHash.put(x, getFileHash(x)));
+        unchanged.forEach(x -> rightHash.put(x, parent.getFileHash(x)));
 
-        final List<Path> allFiles = new ArrayList<>(unchangedFiles);
-        allFiles.addAll(changedFiles);
-        allFiles.addAll(newFiles);
-        Collections.sort(allFiles);
+        final List<Path> allFilesSorted = new ArrayList<>(unchanged);
+        allFilesSorted.addAll(stageAdded);
+        allFilesSorted.addAll(stageModified);
+        Collections.sort(allFilesSorted);
 
-        final String joinedHash = allFiles.stream().map(rightHash::get).collect(Collectors.joining());
+        final String joinedHash = allFilesSorted.stream().map(rightHash::get).collect(Collectors.joining());
         final String revisionHash = Hashing.md5().hashString(joinedHash).toString();
 
-        final List<Path> stagedFilesToCopy = new ArrayList<>(changedFiles);
-        stagedFilesToCopy.addAll(newFiles);
+        final List<Path> stagedFilesToCopy = new ArrayList<>(stageAdded);
+        stagedFilesToCopy.addAll(stageModified);
 
         try {
-            Path revisionParents = Utils.getRevisionParents(workingDir, revisionHash);
-            Path revisionIndex = Utils.getRevisionIndex(workingDir, revisionHash);
-            Path revisionFiles = Utils.getRevisionFiles(workingDir, revisionHash);
+            final Path revisionParents = Utils.getRevisionParents(workingDir, revisionHash);
+            final Path revisionIndex = Utils.getRevisionIndex(workingDir, revisionHash);
+            final Path revisionFiles = Utils.getRevisionFiles(workingDir, revisionHash);
 
-            Files.createDirectories(revisionIndex);
-            Files.createDirectories(revisionParents);
             Files.createDirectories(revisionFiles);
+            Files.createFile(revisionIndex);
+            Files.createFile(revisionParents);
 
             try (final PrintWriter out = new PrintWriter(revisionParents.toFile())) {
                 out.println(parent.getHash());
@@ -198,13 +206,13 @@ public class Stage {
 
             final Map<Path, Path> newPaths = new HashMap<>(stagedFilesToCopy.size());
             for (final Path path : stagedFilesToCopy) {
-                final Path target = revisionFiles.resolve(path.getFileName());
+                final Path target = revisionFiles.resolve(staged.get(path).getFileName());
                 Files.move(staged.get(path), target);
                 newPaths.put(path, target);
             }
 
             try (final PrintWriter out = new PrintWriter(revisionIndex.toFile())) {
-                for (final Path parentFile : parentFiles) {
+                for (final Path parentFile : unchanged) {
                     out.printf("%s %s\n", parentFile, parent.getFileLocation(parentFile));
                 }
                 for (final Path stagedFileToCopy : stagedFilesToCopy) {
@@ -212,8 +220,11 @@ public class Stage {
                 }
             }
 
+            staged.clear();
+            writeIndexRecordsFromCurrentMap();
+
         } catch (IOException e) {
-            throw new RuntimeException("Failed to commit. Possibly internal files are corrupted.", e);
+            throw new CommitException("Failed to commit. Possibly internal files are corrupted.", e);
         }
 
 

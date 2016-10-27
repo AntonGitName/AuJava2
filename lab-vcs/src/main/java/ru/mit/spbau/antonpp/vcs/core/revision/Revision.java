@@ -1,6 +1,7 @@
-package ru.mit.spbau.antonpp.vcs.core;
+package ru.mit.spbau.antonpp.vcs.core.revision;
 
 import org.jetbrains.annotations.Nullable;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.RevisionCheckoutException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.io.IOException;
@@ -24,21 +25,25 @@ public class Revision {
     private final List<String> parents;
     private final Map<Path, Path> files;
 
-    public Revision(Path workingDir, String hash) throws IOException {
+    public Revision(Path workingDir, String hash) throws RevisionCheckoutException {
         this(workingDir, Utils.getRevisionDir(workingDir, hash));
     }
 
-    public Revision(Path workingDir, Path pathToRevision) throws IOException {
+    public Revision(Path workingDir, Path pathToRevision) throws RevisionCheckoutException {
         hash = pathToRevision.getFileName().toString();
 
-        final Path parentsPath = Utils.getRevisionParents(workingDir, hash);
-        try (Stream<String> stream = Files.lines(parentsPath)) {
-            parents = stream.collect(Collectors.toList());
-        }
+        try {
+            final Path parentsPath = Utils.getRevisionParents(workingDir, hash);
+            try (Stream<String> stream = Files.lines(parentsPath)) {
+                parents = stream.collect(Collectors.toList());
+            }
 
-        final Path indexPath = Utils.getRevisionIndex(workingDir, hash);
-        try (Stream<String> stream = Files.lines(indexPath)) {
-            files = stream.map(line -> line.split(" ")).collect(Collectors.toMap(kv -> Paths.get(kv[0]), kv -> Paths.get(kv[1])));
+            final Path indexPath = Utils.getRevisionIndex(workingDir, hash);
+            try (Stream<String> stream = Files.lines(indexPath)) {
+                files = stream.map(line -> line.split(" ")).collect(Collectors.toMap(kv -> Paths.get(kv[0]), kv -> Paths.get(kv[1])));
+            }
+        } catch (IOException e) {
+            throw new RevisionCheckoutException("Failed to load revision files", e);
         }
     }
 
@@ -71,6 +76,6 @@ public class Revision {
     }
 
     public String getShortHash() {
-        return hash.substring(0, 6) + "...";
+        return hash.substring(0, 6);
     }
 }

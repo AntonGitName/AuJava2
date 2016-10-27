@@ -4,8 +4,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.mit.spbau.antonpp.vcs.core.Stage;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.StageAddException;
+import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

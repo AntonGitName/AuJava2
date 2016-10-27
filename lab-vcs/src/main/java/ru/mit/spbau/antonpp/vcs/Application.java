@@ -45,7 +45,7 @@ public class Application {
         } else if (command.equals("checkout")) {
 //            commandCheckout.run();
         } else if (command.equals("commit")) {
-//            commandCommit.run();
+            commandCommit.run();
         } else if (command.equals("init")) {
             commandInit.run();
         } else if (command.equals("merge")) {

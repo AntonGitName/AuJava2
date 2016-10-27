@@ -3,8 +3,8 @@ package ru.mit.spbau.antonpp.vcs.cli.commands;
 import com.beust.jcommander.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.mit.spbau.antonpp.vcs.core.Status;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.StatusReadingException;
+import ru.mit.spbau.antonpp.vcs.core.revision.Status;
 
 /**
  * @author Anton Mordberg
