@@ -10,7 +10,7 @@ import ru.mit.spbau.antonpp.vcs.core.revision.Status;
  * @author Anton Mordberg
  * @since 23.10.16
  */
-@Parameters(commandNames = {"st", "status"}, commandDescription = "Create index")
+@Parameters(commandNames = {"st", "status"}, commandDescription = "Print status")
 public class CommandStatus extends CommandWithRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandStatus.class);

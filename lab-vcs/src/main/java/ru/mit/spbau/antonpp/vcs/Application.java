@@ -42,7 +42,7 @@ public class Application {
         if (command.equals("add")) {
             commandAdd.run();
         } else if (command.equals("branch")) {
-//            commandBranch.run();
+            commandBranch.run();
         } else if (command.equals("checkout")) {
 //            commandCheckout.run();
         } else if (command.equals("commit")) {
