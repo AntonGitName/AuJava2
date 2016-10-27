@@ -4,10 +4,7 @@ import com.google.common.hash.Hashing;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.CommitException;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.RevisionCheckoutException;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.StageAddException;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.StatusReadingException;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.*;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.io.FileNotFoundException;
@@ -108,7 +105,15 @@ public class Stage {
         }
     }
 
-    private void addFile(Path path) throws IOException {
+    private void copyFileToStageDir(Path path, String hash) throws IOException {
+        final Path stagedPath = Utils.getStageFiles(workingDir).resolve(hash);
+        Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
+        staged.put(path, stagedPath);
+        writeIndexRecordsFromCurrentMap();
+        LOGGER.debug("File added to stage ({})", path);
+    }
+
+    private void addOrModifyFile(Path path) throws IOException {
         final String hash = Utils.getHashForFile(workingDir, path).toString();
         if (staged.containsKey(path)) {
             final String stagedHash = getFileHash(path);
@@ -119,23 +124,34 @@ public class Stage {
                     final Path realPath = staged.get(path);
                     Files.delete(realPath);
                 }
-                final Path stagedPath = Utils.getStageFiles(workingDir).resolve(hash);
-                Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
-                staged.put(path, stagedPath);
-                writeIndexRecordsFromCurrentMap();
-                LOGGER.debug("File added to stage ({})", path);
+                final String revisionHash = parent.getFileHash(path);
+                if (revisionHash != null && revisionHash.equals(hash)) {
+                    LOGGER.debug("Removing file from stage because at is the same as in the last revision");
+                    staged.remove(path);
+                    writeIndexRecordsFromCurrentMap();
+                } else {
+                    copyFileToStageDir(path, hash);
+                }
             }
         } else {
             final String revisionHash = parent.getFileHash(path);
             if (revisionHash == null || !revisionHash.equals(hash)) {
-                final Path stagedPath = Utils.getStageFiles(workingDir).resolve(hash);
-                Files.copy(path, stagedPath, StandardCopyOption.REPLACE_EXISTING);
-                staged.put(path, stagedPath);
-                writeIndexRecordsFromCurrentMap();
-                LOGGER.debug("File added to stage ({})", path);
+                copyFileToStageDir(path, hash);
             } else {
-                LOGGER.warn("Adding unchanged file");
+                LOGGER.warn("Adding unchanged file. Nothing to do");
             }
+        }
+    }
+
+    public void reset(Path path) throws NoSuchFileInRevisionException, ResetException {
+        if (parent.getFileHash(path) == null) {
+            throw new NoSuchFileInRevisionException();
+        }
+        try {
+            Files.copy(parent.getFileLocation(path), path, StandardCopyOption.REPLACE_EXISTING);
+            addChangesToStage(path);
+        } catch (IOException | StageAddException e) {
+            throw new ResetException(e);
         }
     }
 
@@ -145,7 +161,7 @@ public class Stage {
             if (toRemove) {
                 removeFile(path);
             } else {
-                addFile(path);
+                addOrModifyFile(path);
             }
         } catch (IOException e) {
             throw new StageAddException("Could not read/write files.", e);
