@@ -60,7 +60,7 @@ public class Application {
         } else if (command.equals("remove")) {
 //            commandRemove.run();
         } else if (command.equals("clean")) {
-//            commandClean.run();
+            commandClean.run();
         }
     }
 

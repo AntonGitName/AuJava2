@@ -16,23 +16,6 @@ public class Status {
 
     private final Stage stage;
     private final Path workingDir;
-
-    public List<Path> getUnchanged() {
-        return unchanged;
-    }
-
-    public List<Path> getStageAdded() {
-        return stageAdded;
-    }
-
-    public List<Path> getStageModified() {
-        return stageModified;
-    }
-
-    public List<Path> getStageRemoved() {
-        return stageRemoved;
-    }
-
     private final List<Path> unchanged;
     private final List<Path> untracked;
     private final List<Path> stageAdded;
@@ -40,8 +23,6 @@ public class Status {
     private final List<Path> stageRemoved;
     private final List<Path> notStageModified = new ArrayList<>();
     private final List<Path> notStageRemoved = new ArrayList<>();
-
-
     public Status(Stage stage, Path workingDir) throws StatusReadingException {
         this.stage = stage;
         this.workingDir = workingDir;
@@ -98,6 +79,26 @@ public class Status {
         } catch (IOException e) {
             throw new StatusReadingException("Could not read internal files.", e);
         }
+    }
+
+    public List<Path> getUnchanged() {
+        return unchanged;
+    }
+
+    public List<Path> getStageAdded() {
+        return stageAdded;
+    }
+
+    public List<Path> getStageModified() {
+        return stageModified;
+    }
+
+    public List<Path> getStageRemoved() {
+        return stageRemoved;
+    }
+
+    public List<Path> getUntracked() {
+        return untracked;
     }
 
     @Override
