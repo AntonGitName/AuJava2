@@ -4,15 +4,9 @@ import com.beust.jcommander.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.Repository;
-import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.CommitException;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
-import ru.mit.spbau.antonpp.vcs.core.log.RepositoryLog;
-import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.InitException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -34,32 +28,10 @@ public class CommandInit extends AbstractCommand {
 
         LOGGER.debug("Internals path: {}", internals);
 
-        if (root != null) {
-            exitWithError(null, String.format("This folder has already an initialised repository at %s.", root));
-        } else {
-            try {
-                Files.createDirectories(internals);
-                Files.createDirectories(Utils.getStageFiles(currentDir));
-                Files.createDirectories(Utils.getRevisionsDir(currentDir));
-
-                final Stage stage = new Stage();
-                stage.setRoot(currentDir);
-                final String initialCommitHash = stage.commit();
-                final Repository repository = new Repository();
-                repository.setRoot(currentDir);
-                repository.setHeadHash(initialCommitHash);
-                stage.serialize(Utils.getStageIndex(currentDir));
-                repository.serialize(Utils.getRepository(currentDir));
-                new RepositoryLog().serialize(Utils.getLogFile(currentDir));
-                new BranchResolver().serialize(Utils.getBranchesFile(currentDir));
-
-                LOGGER.info("Commit {} created in {}", initialCommitHash, currentDir);
-                System.out.println("Initial commit has been created");
-
-            } catch (IOException | SerializationException | CommitException e) {
-                exitWithError(e, "Failed to create repository in this folder.");
-            }
-
+        try {
+            Repository.init();
+        } catch (InitException e) {
+            exitWithError(e, "Failed to create repository in this folder.");
         }
     }
 }

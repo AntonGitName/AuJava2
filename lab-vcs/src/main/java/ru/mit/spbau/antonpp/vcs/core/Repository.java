@@ -38,6 +38,40 @@ public class Repository implements FileSerializable {
     public Repository() {
     }
 
+    public static void init() throws InitException {
+        final Path currentDir = Utils.getCurrentDir();
+        final Path root = Utils.getRoot();
+        if (root != null) {
+            throw new InitException(String.format("This folder has already an initialised repository at %s.", root));
+        } else {
+            final Path internals = Utils.getInternals(currentDir);
+            try {
+                // create all required internal dirs
+                Files.createDirectories(internals);
+                Files.createDirectories(Utils.getStageFiles(currentDir));
+                Files.createDirectories(Utils.getRevisionsDir(currentDir));
+
+                // create Stage and repository
+                final Stage stage = new Stage();
+                stage.setRoot(currentDir);
+                final String initialCommitHash = stage.commit();
+                final Repository repository = new Repository();
+                repository.setRoot(currentDir);
+                repository.setHeadHash(initialCommitHash);
+                repository.serialize(Utils.getRepository(currentDir));
+
+                // create all required internal files
+                repository.saveStage(stage);
+                repository.saveBranchResolver(new BranchResolver());
+                repository.saveLog(new RepositoryLog());
+
+                LOGGER.debug("Commit {} created in {}", initialCommitHash, currentDir);
+            } catch (SerializationException | CommitException | IOException e) {
+                throw new InitException("Failed to create internal files", e);
+            }
+        }
+    }
+
     public void setRoot(@NotNull Path root) {
         this.root = root;
     }
@@ -253,5 +287,12 @@ public class Repository implements FileSerializable {
             }
         }
         checkoutHash(revName, branch);
+    }
+
+    // for tests only
+    Status getDetailedStatus() throws SerializationException {
+        final Stage stage = loadStage();
+        final Commit head = loadHead();
+        return new Status(head, stage);
     }
 }

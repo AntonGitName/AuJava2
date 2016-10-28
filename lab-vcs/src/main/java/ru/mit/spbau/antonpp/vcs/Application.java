@@ -65,28 +65,40 @@ public class Application {
     private void run() {
         jc.getParsedCommand();
         final String command = jc.getParsedCommand();
-        if (command.equals("add")) {
-            commandAdd.run();
-        } else if (command.equals("branch")) {
-            commandBranch.run();
-        } else if (command.equals("checkout")) {
-            commandCheckout.run();
-        } else if (command.equals("commit")) {
-            commandCommit.run();
-        } else if (command.equals("log")) {
-            commandLog.run();
-        } else if (command.equals("init")) {
-            commandInit.run();
-        } else if (command.equals("merge")) {
+        switch (command) {
+            case "add":
+                commandAdd.run();
+                break;
+            case "branch":
+                commandBranch.run();
+                break;
+            case "checkout":
+                commandCheckout.run();
+                break;
+            case "commit":
+                commandCommit.run();
+                break;
+            case "log":
+                commandLog.run();
+                break;
+            case "init":
+                commandInit.run();
+                break;
+            case "merge":
 //            commandMerge.run();
-        } else if (command.equals("status")) {
-            commandStatus.run();
-        } else if (command.equals("reset")) {
-            commandReset.run();
-        } else if (command.equals("rm")) {
-            commandRemove.run();
-        } else if (command.equals("clean")) {
-            commandClean.run();
+                break;
+            case "status":
+                commandStatus.run();
+                break;
+            case "reset":
+                commandReset.run();
+                break;
+            case "rm":
+                commandRemove.run();
+                break;
+            case "clean":
+                commandClean.run();
+                break;
         }
     }
 

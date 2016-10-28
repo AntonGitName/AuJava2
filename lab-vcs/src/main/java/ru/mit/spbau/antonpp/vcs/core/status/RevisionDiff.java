@@ -15,15 +15,10 @@ import java.util.Set;
  */
 public class RevisionDiff {
 
-    private final Revision oldRev;
-    private final Revision newRev;
-
     private final Map<Path, FileStatus> files = new HashMap<>();
 
 
     public RevisionDiff(Revision oldRev, Revision newRev) {
-        this.oldRev = oldRev;
-        this.newRev = newRev;
 
         final Set<Path> oldFiles = oldRev.listFiles();
         final Set<Path> newFiles = newRev.listFiles();

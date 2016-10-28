@@ -111,7 +111,7 @@ public class Stage extends AbstractRevision {
 
     private void removeIfExist(Path path) throws IOException {
         if (index.containsKey(path)) {
-            Files.delete(path);
+            Files.delete(getFileLocation(path));
         }
     }
 
@@ -136,7 +136,7 @@ public class Stage extends AbstractRevision {
                 index.put(path, parentWithThisFile.getFileLocation(path));
             } else {
                 try {
-                    Utils.moveToDir(getFileLocation(path), Utils.getRevisionFiles(root, commitHash));
+                    Utils.copyToDir(getFileLocation(path), Utils.getRevisionFiles(root, commitHash));
                 } catch (IOException e) {
                     throw new CommitException("Failed to move file", e);
                 }
