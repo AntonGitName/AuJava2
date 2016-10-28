@@ -45,7 +45,7 @@ public abstract class AbstractRevision implements Revision, FileSerializable {
         throw new IllegalArgumentException("Specified file was not found in the revision.");
     }
 
-    public Path getFileLocation(Path path) {
+    public Path getRealFileLocation(Path path) {
         return index.get(path);
     }
 
@@ -67,10 +67,6 @@ public abstract class AbstractRevision implements Revision, FileSerializable {
             revHash = calcRevHash();
         }
         return revHash;
-    }
-
-    public String getShortHash() {
-        return getRevHash().substring(0, 6);
     }
 
     private String calcRevHash() {

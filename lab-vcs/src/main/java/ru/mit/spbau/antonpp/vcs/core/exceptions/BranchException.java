@@ -8,9 +8,4 @@ public class BranchException extends Exception {
     public BranchException(String message) {
         super(message);
     }
-
-    public BranchException(String message, Throwable cause) {
-
-        super(message, cause);
-    }
 }

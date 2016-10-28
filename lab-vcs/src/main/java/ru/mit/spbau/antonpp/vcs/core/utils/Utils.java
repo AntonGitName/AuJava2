@@ -2,10 +2,11 @@ package ru.mit.spbau.antonpp.vcs.core.utils;
 
 import com.google.common.hash.Hashing;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.DateFormat;
@@ -19,8 +20,6 @@ import java.util.stream.Collectors;
  * @since 26.10.16
  */
 public class Utils {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
 
     private Utils() {
     }
@@ -70,7 +69,7 @@ public class Utils {
     }
 
     public static String getFileContent(Path path) throws IOException {
-        return new String(java.nio.file.Files.readAllBytes(path));
+        return new String(java.nio.file.Files.readAllBytes(path), Charset.defaultCharset());
     }
 
     public static Path getCurrentDir() {
@@ -105,10 +104,6 @@ public class Utils {
         return getRevisionsDir(root).resolve(hash);
     }
 
-    public static Path getRevisionParents(Path root, String hash) {
-        return getRevisionDir(root, hash).resolve(Constants.REV_PARENTS);
-    }
-
     public static Path getRevisionIndex(Path root, String hash) {
         return getRevisionDir(root, hash).resolve(Constants.REV_INDEX);
     }
@@ -133,28 +128,6 @@ public class Utils {
         return getInternals(root).resolve(Constants.GLOBAL_BRANCHES);
     }
 
-    public static Map<String, String> readBranches(Path root) throws IOException {
-        final Map<String, String> branchesMap = new HashMap<>();
-        final List<String> lines = java.nio.file.Files.readAllLines(Utils.getBranchesFile(root));
-        for (final String line : lines) {
-            final String[] splittedLine = line.split(" ");
-            branchesMap.put(splittedLine[0], splittedLine[1]);
-        }
-        return branchesMap;
-    }
-
-    public static void writeBranches(Map<String, String> branchesMap, Path root) throws FileNotFoundException {
-        try (final PrintWriter out = new PrintWriter(Utils.getBranchesFile(root).toFile())) {
-            for (final Map.Entry<String, String> kv : branchesMap.entrySet()) {
-                out.printf("%s %s\n", kv.getKey(), kv.getValue());
-            }
-        }
-    }
-
-    public static void moveToDir(Path file, Path dir) throws IOException {
-        java.nio.file.Files.move(file, dir.resolve(file.getFileName()));
-    }
-
     public static void copyToDir(Path file, Path dir) throws IOException {
         java.nio.file.Files.copy(file, dir.resolve(file.getFileName()));
     }
@@ -175,19 +148,8 @@ public class Utils {
         return Paths.get((String) os.readObject());
     }
 
-    public static void serializeListPaths(List<Path> paths, ObjectOutputStream os) throws IOException {
-        final List<String> strings = paths.stream().map(Path::toString).collect(Collectors.toList());
-        os.writeObject(strings);
-    }
-
-    public static List<Path> deserializeListPaths(ObjectInputStream os) throws IOException, ClassNotFoundException {
-        final List<String> strings = (List<String>) os.readObject();
-        return strings.stream().map(Paths::get).collect(Collectors.toList());
-    }
-
     // Yeah, best approach evah
     public static <T, V> void serializeMapWithPath(Map<T, V> map, ObjectOutputStream os, Class k, Class v) throws IOException {
-//        LOGGER.debug("map before serialization: {}", map);
         final ObjectToStringMapper<Object> mK = new ObjectToStringMapper<>(k);
         final ObjectToStringMapper<Object> mV = new ObjectToStringMapper<>(v);
         final Function<Map.Entry, String> mapperK = x -> mK.apply(x.getKey());
@@ -202,19 +164,14 @@ public class Utils {
         final Function<Map.Entry<String, String>, K> mapperK = x -> mK.apply(x.getKey());
         final Function<Map.Entry<String, String>, V> mapperV = x -> mV.apply(x.getValue());
         final Map<String, String> map = (Map<String, String>) os.readObject();
-        final Map<K, V> result = map.entrySet().stream().collect(Collectors.toMap(mapperK, mapperV));
-//        LOGGER.debug("deserialized map: {}", result);
-        return result;
+        return map.entrySet().stream().collect(Collectors.toMap(mapperK, mapperV));
     }
 
     private static class ObjectToStringMapper<T> implements Function<T, String> {
-
         private final Class type;
-
         private ObjectToStringMapper(Class type) {
             this.type = type;
         }
-
         @Override
         public String apply(T t) {
             return type.equals(String.class) ? (String) t : t.toString();
@@ -222,13 +179,10 @@ public class Utils {
     }
 
     private static class StringToObjectMapper<T> implements Function<String, T> {
-
         private final Class type;
-
         private StringToObjectMapper(Class type) {
             this.type = type;
         }
-
         @Override
         public T apply(String s) {
             return type.equals(String.class) ? (T) s : (T) Paths.get(s);

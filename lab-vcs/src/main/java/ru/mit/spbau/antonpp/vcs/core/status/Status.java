@@ -23,7 +23,6 @@ public class Status {
     public Status(Commit head, Stage stage, BranchResolver branchResolver) {
         headDiff = new RevisionDiff(head, stage);
         stageDiff = new RevisionDiff(stage, new WorkingDir(stage.getRoot()));
-        final BranchResolver branchResolver1 = branchResolver;
         branch = branchResolver.findCommitBranch(head.getRevHash());
         headHash = head.getRevHash();
     }
@@ -40,15 +39,15 @@ public class Status {
     public String toString() {
         final StringBuilder sb = new StringBuilder();
         if (branch != null) {
-            sb.append(String.format("On branch %s\n\n", branch));
+            sb.append(String.format("On branch %s%n%n", branch));
         } else {
-            sb.append(String.format("HEAD AT %s\n\n", headHash));
+            sb.append(String.format("HEAD AT %s%n%n", headHash));
         }
         sb.append("Changes to be committed:\n\n");
 
         headDiff.getFiles().entrySet().stream()
                 .filter(x -> x.getValue() != FileStatus.UNCHANGED)
-                .forEach(x -> sb.append(String.format("\t%s\t%s\n", x.getValue().getShortName(), relative(x.getKey()))));
+                .forEach(x -> sb.append(String.format("\t%s\t%s%n", x.getValue().getShortName(), relative(x.getKey()))));
 
         sb.append("\nChanges not staged for commit:\n\n");
         stageDiff.getFiles().entrySet().stream()

@@ -31,9 +31,7 @@ public class Repository implements FileSerializable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Repository.class);
 
-    @NotNull
     private Path root;
-    @NotNull
     private String headHash;
 
     public Repository() {
@@ -72,7 +70,7 @@ public class Repository implements FileSerializable {
 
                 LOGGER.debug("Commit {} created in {}", initialCommitHash, currentDir);
             } catch (SerializationException | CommitException | IOException e) {
-                throw new InitException("Failed to create internal files", e);
+                throw new InitException(e);
             }
         }
     }
@@ -244,7 +242,7 @@ public class Repository implements FileSerializable {
         saveStage(stage);
     }
 
-    public List<CommitInfo> log() throws SerializationException, CommitException {
+    public List<CommitInfo> log() throws SerializationException {
         final RepositoryLog repositoryLog = loadLog();
         return repositoryLog.getLog();
     }

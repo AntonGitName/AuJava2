@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.CommitException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
 import ru.mit.spbau.antonpp.vcs.core.log.CommitInfo;
 
@@ -38,10 +37,8 @@ public class CommandLog extends AbstractCommand {
         try {
             logFileContent = repository.log();
             printHeader();
-            for (final CommitInfo info : logFileContent) {
-                printLine(info);
-            }
-        } catch (SerializationException | CommitException e) {
+            logFileContent.forEach(this::printLine);
+        } catch (SerializationException e) {
             exitWithError(e, "Failed to read log.");
         }
     }

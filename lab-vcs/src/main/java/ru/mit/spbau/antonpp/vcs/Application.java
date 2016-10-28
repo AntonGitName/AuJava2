@@ -21,7 +21,7 @@ public class Application {
     private final CommandRemove commandRemove = new CommandRemove();
     private final CommandClean commandClean = new CommandClean();
     private final CommandLog commandLog = new CommandLog();
-    private JCommander jc;
+    private final JCommander jc;
 
     @Parameter(names = {"-h", "--help"}, description = "Print this help message and exit", help = true)
     private boolean help;
@@ -51,7 +51,6 @@ public class Application {
 
         if (help || jc.getParsedCommand() == null) {
             jc.usage();
-            System.exit(0);
         }
     }
 
@@ -61,7 +60,6 @@ public class Application {
     }
 
     private void run() {
-        jc.getParsedCommand();
         final String command = jc.getParsedCommand();
         switch (command) {
             case "add":
@@ -97,6 +95,8 @@ public class Application {
             case "clean":
                 commandClean.run();
                 break;
+            default:
+                jc.usage();
         }
     }
 

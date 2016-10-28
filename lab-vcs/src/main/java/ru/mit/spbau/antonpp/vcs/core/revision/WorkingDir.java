@@ -40,7 +40,7 @@ public class WorkingDir implements Revision {
     }
 
     @Override
-    public Path getFileLocation(Path path) {
+    public Path getRealFileLocation(Path path) {
         return path;
     }
 
@@ -56,9 +56,12 @@ public class WorkingDir implements Revision {
 
     @Override
     public @NotNull String getRevHash() {
-        final List<Path> files = new ArrayList<>(listFiles());
-        final String joinedHash = files.stream().sorted().map(this::getFileHash).collect(Collectors.joining());
-        return Hashing.md5().hashString(joinedHash).toString();
+        if (revHash == null) {
+            final List<Path> files = new ArrayList<>(listFiles());
+            final String joinedHash = files.stream().sorted().map(this::getFileHash).collect(Collectors.joining());
+            revHash = Hashing.md5().hashString(joinedHash).toString();
+        }
+        return revHash;
     }
 
 

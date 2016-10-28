@@ -14,7 +14,7 @@ public interface Revision {
     @NotNull String getFileHash(Path path);
 
 
-    Path getFileLocation(Path path);
+    Path getRealFileLocation(Path path);
 
 
     Set<Path> listFiles();

@@ -13,7 +13,6 @@ public class Constants {
     static final String GLOBAL_BRANCHES = "branches_dump";
 
     static final String REV_FILES = "files";
-    static final String REV_PARENTS = "parents.txt";
     static final String REV_INDEX = "rev_dump";
 
     static final String STAGE = "stage";

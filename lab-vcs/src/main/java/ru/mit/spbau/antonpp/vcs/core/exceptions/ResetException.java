@@ -9,12 +9,7 @@ public class ResetException extends Exception {
         super(message, cause);
     }
 
-    public ResetException(String message) {
-
-        super(message);
-    }
-
-    public ResetException(Throwable cause) {
-        super(cause);
+    public ResetException() {
+        super("File is not in stage and not versioned in HEAD. Cannot reset.");
     }
 }

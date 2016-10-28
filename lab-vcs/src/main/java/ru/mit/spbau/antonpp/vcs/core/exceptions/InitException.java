@@ -9,7 +9,7 @@ public class InitException extends Exception {
         super(message);
     }
 
-    public InitException(String message, Throwable cause) {
-        super(message, cause);
+    public InitException(Throwable cause) {
+        super("Failed to create internal files", cause);
     }
 }

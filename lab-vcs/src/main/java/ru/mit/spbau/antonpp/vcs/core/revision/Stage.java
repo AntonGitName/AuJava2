@@ -47,10 +47,10 @@ public class Stage extends AbstractRevision {
         if (parentWithFile == null) {
             LOGGER.debug("Reseting not versioned file");
             if (!checkFile(path)) {
-                throw new ResetException("File is not in stage and not versioned in HEAD. Cannot reset.");
+                throw new ResetException();
             }
             try {
-                Files.delete(getFileLocation(path));
+                Files.delete(getRealFileLocation(path));
             } catch (IOException e) {
                 throw new ResetException("Could not remove file from stage", e);
             }
@@ -60,8 +60,8 @@ public class Stage extends AbstractRevision {
             final String fileHash = parentWithFile.getFileHash(path);
             final Path stageLocation = Utils.getStageFiles(root).resolve(fileHash);
             try {
-                Files.copy(parentWithFile.getFileLocation(path), stageLocation, StandardCopyOption.REPLACE_EXISTING);
-                Files.copy(parentWithFile.getFileLocation(path), path, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(parentWithFile.getRealFileLocation(path), stageLocation, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(parentWithFile.getRealFileLocation(path), path, StandardCopyOption.REPLACE_EXISTING);
             } catch (IOException e) {
                 throw new ResetException("Could not copy file from parent revision", e);
             }
@@ -83,14 +83,14 @@ public class Stage extends AbstractRevision {
                 index.remove(path);
             }
         } catch (IOException e) {
-            throw new StageAddException("Could not add changes to stage", e);
+            throw new StageAddException(e);
         }
 
     }
 
     private void removeIfExist(Path path) throws IOException {
         if (index.containsKey(path)) {
-            Files.delete(getFileLocation(path));
+            Files.delete(getRealFileLocation(path));
         }
     }
 
@@ -115,10 +115,10 @@ public class Stage extends AbstractRevision {
                 throw new CommitException("Failed to deserialize parent revision", e);
             }
             if (parentWithThisFile != null) {
-                commit.index.put(path, parentWithThisFile.getFileLocation(path));
+                commit.index.put(path, parentWithThisFile.getRealFileLocation(path));
             } else {
                 try {
-                    Utils.copyToDir(getFileLocation(path), Utils.getRevisionFiles(root, commitHash));
+                    Utils.copyToDir(getRealFileLocation(path), Utils.getRevisionFiles(root, commitHash));
                     commit.index.put(path, Utils.getRevisionFiles(root, commitHash).resolve(getFileHash(path)));
                 } catch (IOException e) {
                     throw new CommitException("Failed to move file", e);
@@ -206,7 +206,7 @@ public class Stage extends AbstractRevision {
             index.clear();
             for (final Path path : revision.listFiles()) {
                 final Path dir = Utils.getStageFiles(root);
-                final Path location = revision.getFileLocation(path);
+                final Path location = revision.getRealFileLocation(path);
                 Utils.copyToDir(location, dir);
                 Files.copy(location, path, StandardCopyOption.REPLACE_EXISTING);
                 index.put(path, dir.resolve(location.getFileName()));
@@ -225,7 +225,7 @@ public class Stage extends AbstractRevision {
             for (final Path path : filesToMergeIn) {
                 if (!checkFile(path)) {
                     final Path dir = Utils.getStageFiles(root);
-                    final Path location = commitToMergeWith.getFileLocation(path);
+                    final Path location = commitToMergeWith.getRealFileLocation(path);
                     Utils.copyToDir(location, dir);
                     Files.copy(location, path, StandardCopyOption.REPLACE_EXISTING);
                     index.put(path, dir.resolve(location.getFileName()));

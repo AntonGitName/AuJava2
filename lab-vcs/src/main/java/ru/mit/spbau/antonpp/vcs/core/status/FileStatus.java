@@ -5,7 +5,7 @@ package ru.mit.spbau.antonpp.vcs.core.status;
  * @since 27/10/16
  */
 public enum FileStatus {
-    ADDED, MODIFIED, REMOVED, UNCHANGED, UNTRACKED;
+    ADDED, MODIFIED, REMOVED, UNCHANGED;
 
     public String getName() {
         return getShortName() + toString().substring(1).toLowerCase();
