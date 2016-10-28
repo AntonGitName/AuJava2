@@ -34,10 +34,9 @@ public class CommandBranch extends AbstractCommand {
         LOGGER.debug("User specified branch: {}", branch);
         try {
             if (toDelete) {
-                repository.addBranch(branch);
-            } else {
                 repository.deleteBranch(branch);
-
+            } else {
+                repository.addBranch(branch);
             }
         } catch (SerializationException | BranchException e) {
             exitWithError(e, e.getMessage());

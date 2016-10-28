@@ -1,6 +1,5 @@
 package ru.mit.spbau.antonpp.vcs.core.status;
 
-import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
 import ru.mit.spbau.antonpp.vcs.core.revision.Commit;
 import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
 import ru.mit.spbau.antonpp.vcs.core.revision.WorkingDir;
@@ -20,10 +19,10 @@ public class Status {
     private final String branch;
     private final String headHash;
 
-    public Status(Commit head, Stage stage, BranchResolver branchResolver) {
+    public Status(Commit head, Stage stage) {
         headDiff = new RevisionDiff(head, stage);
         stageDiff = new RevisionDiff(stage, new WorkingDir(stage.getRoot()));
-        branch = branchResolver.findCommitBranch(head.getRevHash());
+        branch = stage.getBranch();
         headHash = head.getRevHash();
     }
 

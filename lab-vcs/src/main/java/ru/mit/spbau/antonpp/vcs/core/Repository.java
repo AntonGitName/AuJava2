@@ -230,8 +230,7 @@ public class Repository implements FileSerializable {
     public String status() throws SerializationException {
         final Stage stage = loadStage();
         final Commit head = loadHead();
-        final BranchResolver branchResolver = loadBranchResolver();
-        final String status = new Status(head, stage, branchResolver).toString();
+        final String status = new Status(head, stage).toString();
         saveStage(stage);
         return status;
     }
@@ -286,7 +285,7 @@ public class Repository implements FileSerializable {
                 stage.setBranch(null);
                 saveStage(stage);
             } else {
-                throw new BranchException("Nu such branch");
+                throw new BranchException("No such branch");
             }
         }
     }
@@ -356,7 +355,6 @@ public class Repository implements FileSerializable {
     Status getDetailedStatus() throws SerializationException {
         final Stage stage = loadStage();
         final Commit head = loadHead();
-        final BranchResolver branchResolver = loadBranchResolver();
-        return new Status(head, stage, branchResolver);
+        return new Status(head, stage);
     }
 }

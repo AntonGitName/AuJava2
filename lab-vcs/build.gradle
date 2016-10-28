@@ -21,6 +21,11 @@ jar {
     }
 }
 
+sourceSets {
+    main
+    test
+}
+
 dependencies {
 
     testCompile group: 'commons-io', name: 'commons-io', version: '2.5'
@@ -31,8 +36,7 @@ dependencies {
     // hashing
     compile group: 'com.google.guava', name: 'guava', version: '13.0'
     // logging
-    compile 'org.slf4j:slf4j-api:1.7.20'
-    compile 'ch.qos.logback:logback-classic:1.1.7'
+    compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.2'
     // cli
     compile group: 'com.beust', name: 'jcommander', version: '1.48'
 

@@ -30,6 +30,7 @@ public class CommandInit extends AbstractCommand {
 
         try {
             Repository.init();
+            System.out.println("Repository initialised.");
         } catch (InitException e) {
             exitWithError(e, "Failed to create repository in this folder.");
         }
