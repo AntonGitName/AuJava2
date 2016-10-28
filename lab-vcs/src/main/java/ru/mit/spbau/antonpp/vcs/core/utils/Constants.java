@@ -6,7 +6,7 @@ package ru.mit.spbau.antonpp.vcs.core.utils;
  */
 public class Constants {
 
-    static final String GLOBAL_INTERNALS = "vcs-internals";
+    static final String GLOBAL_INTERNALS = ".vcs-internals";
     static final String GLOBAL_LOGS = "log_dump";
     static final String GLOBAL_REPOSITORY = "repository_dump";
     static final String GLOBAL_REVISIONS = "revs";
