@@ -18,7 +18,9 @@ import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -31,7 +33,6 @@ public class Repository implements FileSerializable {
 
     @NotNull
     private Path root;
-
     @NotNull
     private String headHash;
 
@@ -54,6 +55,8 @@ public class Repository implements FileSerializable {
                 // create Stage and repository
                 final Stage stage = new Stage();
                 stage.setRoot(currentDir);
+                final String branch = "master";
+                stage.setBranch(branch);
                 final String initialCommitHash = stage.commit();
                 final Repository repository = new Repository();
                 repository.setRoot(currentDir);
@@ -62,7 +65,9 @@ public class Repository implements FileSerializable {
 
                 // create all required internal files
                 repository.saveStage(stage);
-                repository.saveBranchResolver(new BranchResolver());
+                final BranchResolver branchResolver = new BranchResolver();
+                branchResolver.updateBranch(branch, initialCommitHash);
+                repository.saveBranchResolver(branchResolver);
                 repository.saveLog(new RepositoryLog());
 
                 LOGGER.debug("Commit {} created in {}", initialCommitHash, currentDir);
@@ -72,12 +77,17 @@ public class Repository implements FileSerializable {
         }
     }
 
-    public void setRoot(@NotNull Path root) {
-        this.root = root;
+    // for tests
+    @NotNull String getHeadHash() {
+        return headHash;
     }
 
     public void setHeadHash(@NotNull String headHash) {
         this.headHash = headHash;
+    }
+
+    public void setRoot(@NotNull Path root) {
+        this.root = root;
     }
 
     @Override
@@ -102,7 +112,7 @@ public class Repository implements FileSerializable {
         }
     }
 
-    private Stage loadStage() throws SerializationException {
+    Stage loadStage() throws SerializationException {
         final Stage stage = new Stage();
         stage.deserialize(Utils.getStageIndex(root));
         return stage;
@@ -132,7 +142,7 @@ public class Repository implements FileSerializable {
         final RepositoryLog repositoryLog = loadLog();
         final Stage stage = loadStage();
         if (info.getMsg() == null) {
-            info.setMsg(generateMessage(stage));
+            info.setMsg(generateCommitMessage(stage));
         }
         final String hash = stage.commit();
         headHash = hash;
@@ -142,13 +152,63 @@ public class Repository implements FileSerializable {
             saveBranchResolver(branchResolver);
         }
         info.setHash(hash);
-        stage.setParents(Collections.singletonList(hash));
         saveStage(stage);
         repositoryLog.addRecord(info);
         saveLog(repositoryLog);
     }
 
-    private String generateMessage(Stage stage) {
+    public void merge(String revName, CommitInfo info) throws SerializationException, MergeException {
+        final BranchResolver branchResolver = loadBranchResolver();
+        if (branchResolver.hasBranch(revName)) {
+            try {
+                revName = branchResolver.getBranchHead(revName);
+            } catch (BranchException e) {
+                // impossible
+            }
+        }
+        mergeByHash(revName, info);
+    }
+
+    private void mergeByHash(String commitHash, CommitInfo info) throws SerializationException, MergeException {
+        final Commit commit = new Commit();
+        try {
+            commit.deserialize(Utils.getRevisionIndex(root, commitHash));
+        } catch (SerializationException e) {
+            throw new MergeException("No commit find with this hash", e);
+        }
+        final RepositoryLog repositoryLog = loadLog();
+        final Stage stage = loadStage();
+        if (info.getMsg() == null) {
+            info.setMsg(generateMergeMessage(headHash, commitHash));
+        }
+        final String hash = stage.merge(commit);
+        headHash = hash;
+        if (stage.getBranch() != null) {
+            final BranchResolver branchResolver = loadBranchResolver();
+            branchResolver.updateBranch(stage.getBranch(), hash);
+            saveBranchResolver(branchResolver);
+        }
+        saveStage(stage);
+        info.setHash(hash);
+        repositoryLog.addRecord(info);
+        saveLog(repositoryLog);
+    }
+
+    private String generateMergeMessage(String headHash, String commitHash) {
+        try {
+            final BranchResolver branchResolver = loadBranchResolver();
+            final String headBranch = branchResolver.findCommitBranch(headHash);
+            final String commitBranch = branchResolver.findCommitBranch(commitHash);
+            final String nameHead = headBranch != null ? headBranch : headHash;
+            final String nameCommit = commitBranch != null ? commitBranch : commitHash;
+            return String.format("Merged %s with %s", nameHead, nameCommit);
+        } catch (SerializationException e) {
+            LOGGER.warn("failed to generate merge message");
+            return null;
+        }
+    }
+
+    private String generateCommitMessage(Stage stage) {
         try {
             final Commit head = loadHead();
             final RevisionDiff revisionDiff = new RevisionDiff(head, stage);
@@ -172,7 +232,8 @@ public class Repository implements FileSerializable {
     public String status() throws SerializationException {
         final Stage stage = loadStage();
         final Commit head = loadHead();
-        final String status = new Status(head, stage).toString();
+        final BranchResolver branchResolver = loadBranchResolver();
+        final String status = new Status(head, stage, branchResolver).toString();
         saveStage(stage);
         return status;
     }
@@ -204,23 +265,32 @@ public class Repository implements FileSerializable {
 
     private BranchResolver loadBranchResolver() throws SerializationException {
         final BranchResolver branchResolver = new BranchResolver();
-        branchResolver.deserialize(Utils.getStageIndex(root));
+        branchResolver.deserialize(Utils.getBranchesFile(root));
         return branchResolver;
     }
 
     private void saveBranchResolver(BranchResolver branchResolver) throws SerializationException {
-        branchResolver.serialize(Utils.getLogFile(root));
+        branchResolver.serialize(Utils.getBranchesFile(root));
     }
 
     public void deleteBranch(String branch) throws SerializationException, BranchException {
         final Stage stage = loadStage();
         final BranchResolver branchResolver = loadBranchResolver();
-        branchResolver.deleteBranch(branch);
-        if (branch.equals(stage.getBranch())) {
-            stage.setBranch(branch);
-            saveStage(stage);
+        if (branchResolver.hasBranch(branch)) {
+            branchResolver.deleteBranch(branch);
+            if (branch.equals(stage.getBranch())) {
+                stage.setBranch(null);
+                saveStage(stage);
+            }
+            saveBranchResolver(branchResolver);
+        } else {
+            if (branch.equals(stage.getBranch())) {
+                stage.setBranch(null);
+                saveStage(stage);
+            } else {
+                throw new BranchException("Nu such branch");
+            }
         }
-        saveBranchResolver(branchResolver);
     }
 
     public void addBranch(String branch) throws SerializationException, BranchException {
@@ -265,7 +335,7 @@ public class Repository implements FileSerializable {
         head = loadHead();
         stage.checkoutRevision(head);
         stage.setBranch(branch);
-
+        saveStage(stage);
     }
 
     public void checkout(String revName) throws CheckoutException, SerializationException {
@@ -279,12 +349,7 @@ public class Repository implements FileSerializable {
             }
             branch = revName;
         } else {
-            final Optional<String> optional = branchResolver.findCommitBranch(revName);
-            if (optional.isPresent()) {
-                branch = optional.get();
-            } else {
-                branch = null;
-            }
+            branch = branchResolver.findCommitBranch(revName);
         }
         checkoutHash(revName, branch);
     }
@@ -293,6 +358,7 @@ public class Repository implements FileSerializable {
     Status getDetailedStatus() throws SerializationException {
         final Stage stage = loadStage();
         final Commit head = loadHead();
-        return new Status(head, stage);
+        final BranchResolver branchResolver = loadBranchResolver();
+        return new Status(head, stage, branchResolver);
     }
 }

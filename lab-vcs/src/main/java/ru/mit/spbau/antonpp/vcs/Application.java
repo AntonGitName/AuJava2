@@ -2,8 +2,6 @@ package ru.mit.spbau.antonpp.vcs;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.cli.commands.*;
 
 /**
@@ -12,7 +10,6 @@ import ru.mit.spbau.antonpp.vcs.cli.commands.*;
  */
 public class Application {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
     private final CommandAdd commandAdd = new CommandAdd();
     private final CommandBranch commandBranch = new CommandBranch();
     private final CommandCheckout commandCheckout = new CommandCheckout();
@@ -25,6 +22,7 @@ public class Application {
     private final CommandClean commandClean = new CommandClean();
     private final CommandLog commandLog = new CommandLog();
     private JCommander jc;
+
     @Parameter(names = {"-h", "--help"}, description = "Print this help message and exit", help = true)
     private boolean help;
 
@@ -85,7 +83,7 @@ public class Application {
                 commandInit.run();
                 break;
             case "merge":
-//            commandMerge.run();
+                commandMerge.run();
                 break;
             case "status":
                 commandStatus.run();

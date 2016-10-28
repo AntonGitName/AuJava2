@@ -1,5 +1,6 @@
 package ru.mit.spbau.antonpp.vcs.core.branch;
 
+import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.FileSerializable;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.BranchException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
@@ -43,9 +44,11 @@ public class BranchResolver implements FileSerializable {
         return resolver.get(branch);
     }
 
-    public Optional<String> findCommitBranch(String commitHash) {
-        return resolver.entrySet().stream().filter(x -> x.getValue().equals(commitHash)).map(Map.Entry::getKey)
+    @Nullable
+    public String findCommitBranch(String commitHash) {
+        final Optional<String> branch = resolver.entrySet().stream().filter(x -> x.getValue().equals(commitHash)).map(Map.Entry::getKey)
                 .findFirst();
+        return branch.isPresent() ? branch.get() : null;
     }
 
     public void deleteBranch(String branch) throws BranchException {

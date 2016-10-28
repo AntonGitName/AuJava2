@@ -1,8 +1,6 @@
 package ru.mit.spbau.antonpp.vcs.cli.commands;
 
-import com.beust.jcommander.IValueValidator;
 import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,16 +42,6 @@ public class CommandBranch extends AbstractCommand {
         } catch (SerializationException | BranchException e) {
             exitWithError(e, e.getMessage());
 
-        }
-    }
-
-    private static final class NoSpacesValidator implements IValueValidator<String> {
-
-        @Override
-        public void validate(String name, String value) throws ParameterException {
-            if (value.split(" ").length > 1) {
-                throw new ParameterException("Branch name must be without spaces.");
-            }
         }
     }
 }

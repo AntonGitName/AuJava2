@@ -19,6 +19,7 @@ public abstract class AbstractRevision implements Revision, FileSerializable {
     protected String revHash;
     protected Path root;
     protected Map<Path, Path> index = new HashMap<>();
+    protected Set<String> parents;
 
     public Path getRoot() {
         return root;
@@ -28,9 +29,13 @@ public abstract class AbstractRevision implements Revision, FileSerializable {
         this.root = root;
     }
 
-    public abstract List<String> getParents();
+    public Set<String> getParents() {
+        return parents != null ? parents : Collections.emptySet();
+    }
 
-    public abstract void setParents(List<String> parents);
+    public void setParents(Set<String> parents) {
+        this.parents = parents;
+    }
 
     @NotNull
     public String getFileHash(Path path) {

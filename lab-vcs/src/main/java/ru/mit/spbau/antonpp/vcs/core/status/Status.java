@@ -1,5 +1,6 @@
 package ru.mit.spbau.antonpp.vcs.core.status;
 
+import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
 import ru.mit.spbau.antonpp.vcs.core.revision.Commit;
 import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
 import ru.mit.spbau.antonpp.vcs.core.revision.WorkingDir;
@@ -16,10 +17,15 @@ public class Status {
 
     private final RevisionDiff headDiff;
     private final RevisionDiff stageDiff;
+    private final String branch;
+    private final String headHash;
 
-    public Status(Commit head, Stage stage) {
+    public Status(Commit head, Stage stage, BranchResolver branchResolver) {
         headDiff = new RevisionDiff(head, stage);
         stageDiff = new RevisionDiff(stage, new WorkingDir(stage.getRoot()));
+        final BranchResolver branchResolver1 = branchResolver;
+        branch = branchResolver.findCommitBranch(head.getRevHash());
+        headHash = head.getRevHash();
     }
 
     public RevisionDiff getHeadDiff() {
@@ -33,7 +39,11 @@ public class Status {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
-//        sb.append(String.format("On branch %s\n\n", stage.getBranch()));
+        if (branch != null) {
+            sb.append(String.format("On branch %s\n\n", branch));
+        } else {
+            sb.append(String.format("HEAD AT %s\n\n", headHash));
+        }
         sb.append("Changes to be committed:\n\n");
 
         headDiff.getFiles().entrySet().stream()

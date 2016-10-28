@@ -4,15 +4,18 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.*;
-import ru.mit.spbau.antonpp.vcs.core.log.CommitInfo;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author Anton Mordberg
@@ -22,35 +25,8 @@ public class Stage extends AbstractRevision {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Stage.class);
 
-
-    private String parent;
-
     @Nullable
     private String branch;
-
-    public static void main(String[] args) throws Exception {
-//        Stage stage = new Stage();
-
-        final String s = "/Users/antonpp/Documents/Projects/AuJava2/lab-vcs/build/libs/vcs-internals/stage/stage_dump";
-        final String s1 = "/Users/antonpp/Documents/Projects/AuJava2/lab-vcs/build/libs/123.txt";
-        final Path s2 = Paths.get("/Users/antonpp/Documents/Projects/AuJava2/lab-vcs/build/libs/tmp.txt");
-//        stage.deserialize(Paths.get(s));
-//        stage.addChanges(Paths.get(s1));
-        Map<Path, Path> m = new HashMap<>();
-        m.put(Paths.get(s), Paths.get(s1));
-        final CommitInfo commitInfo = new CommitInfo(s1, s1, null);
-        final CommitInfo commitInfo2 = new CommitInfo(s, s, null);
-        final ArrayList<CommitInfo> list = new ArrayList<>();
-        list.add(commitInfo);
-        list.add(commitInfo2);
-        try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(s2.toFile()))) {
-            os.writeObject(list);
-        }
-        try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(s2.toFile()))) {
-
-            System.out.println(os.readObject());
-        }
-    }
 
     @Nullable
     public String getBranch() {
@@ -80,13 +56,16 @@ public class Stage extends AbstractRevision {
             }
             index.remove(path);
         } else {
+            LOGGER.debug("Reseting versioned file");
             final String fileHash = parentWithFile.getFileHash(path);
+            final Path stageLocation = Utils.getStageFiles(root).resolve(fileHash);
             try {
-                Utils.copyToDir(parentWithFile.getFileLocation(path), Utils.getStageFiles(root));
+                Files.copy(parentWithFile.getFileLocation(path), stageLocation, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(parentWithFile.getFileLocation(path), path, StandardCopyOption.REPLACE_EXISTING);
             } catch (IOException e) {
                 throw new ResetException("Could not copy file from parent revision", e);
             }
-            index.put(path, Utils.getStageFiles(root).resolve(fileHash));
+            index.put(path, stageLocation);
         }
     }
 
@@ -125,6 +104,9 @@ public class Stage extends AbstractRevision {
         }
 
         final Set<Path> files = listFiles();
+        final Commit commit = new Commit();
+        commit.setRoot(root);
+        commit.setParents(getParents());
         for (final Path path : files) {
             final Commit parentWithThisFile;
             try {
@@ -133,29 +115,23 @@ public class Stage extends AbstractRevision {
                 throw new CommitException("Failed to deserialize parent revision", e);
             }
             if (parentWithThisFile != null) {
-                index.put(path, parentWithThisFile.getFileLocation(path));
+                commit.index.put(path, parentWithThisFile.getFileLocation(path));
             } else {
                 try {
                     Utils.copyToDir(getFileLocation(path), Utils.getRevisionFiles(root, commitHash));
+                    commit.index.put(path, Utils.getRevisionFiles(root, commitHash).resolve(getFileHash(path)));
                 } catch (IOException e) {
                     throw new CommitException("Failed to move file", e);
                 }
             }
         }
         try {
-            cloneToCommit().serialize(Utils.getRevisionIndex(root, commitHash));
+            commit.serialize(Utils.getRevisionIndex(root, commitHash));
         } catch (SerializationException e) {
             throw new CommitException("Failed to save commit", e);
         }
+        setParents(Collections.singleton(commit.getRevHash()));
         return getRevHash();
-    }
-
-    private Commit cloneToCommit() {
-        final Commit commit = new Commit();
-        commit.setRoot(root);
-        commit.setParents(getParents());
-        commit.index = index;
-        return commit;
     }
 
     private List<Commit> loadParents() throws SerializationException {
@@ -199,7 +175,7 @@ public class Stage extends AbstractRevision {
     public void serialize(Path path) throws SerializationException {
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(path.toFile()))) {
             Utils.serializePath(root, os);
-            os.writeObject(parent);
+            os.writeObject(parents);
             os.writeObject(branch);
 //            os.writeObject(index);
             Utils.serializeMapWithPath(index, os, Path.class, Path.class);
@@ -212,7 +188,7 @@ public class Stage extends AbstractRevision {
     public void deserialize(Path path) throws SerializationException {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(path.toFile()))) {
             root = Utils.deserializePath(os);
-            parent = (String) os.readObject();
+            parents = (Set<String>) os.readObject();
             branch = (String) os.readObject();
 //            index = (Map<Path, Path>) os.readObject();
             index = Utils.deserializeMapWithPath(os, Path.class, Path.class);
@@ -221,21 +197,6 @@ public class Stage extends AbstractRevision {
         }
     }
 
-    @Override
-    public List<String> getParents() {
-        if (parent == null) {
-            return Collections.emptyList();
-        }
-        return Collections.singletonList(parent);
-    }
-
-    @Override
-    public void setParents(List<String> parents) {
-        if (parents.size() != 1) {
-            throw new IllegalArgumentException("Stage can have only one parent");
-        }
-        this.parent = parents.get(0);
-    }
 
     public void checkoutRevision(AbstractRevision revision) throws CheckoutException {
         try {
@@ -247,12 +208,40 @@ public class Stage extends AbstractRevision {
                 final Path dir = Utils.getStageFiles(root);
                 final Path location = revision.getFileLocation(path);
                 Utils.copyToDir(location, dir);
+                Files.copy(location, path, StandardCopyOption.REPLACE_EXISTING);
                 index.put(path, dir.resolve(location.getFileName()));
             }
-            parent = revision.getRevHash();
+            setParents(Collections.singleton(revision.getRevHash()));
             branch = null;
         } catch (IOException e) {
             throw new CheckoutException("Could not copy files", e);
+        }
+    }
+
+    // accept ours always
+    public String merge(Commit commitToMergeWith) throws MergeException {
+        final Set<Path> filesToMergeIn = commitToMergeWith.listFiles();
+        try {
+            for (final Path path : filesToMergeIn) {
+                if (!checkFile(path)) {
+                    final Path dir = Utils.getStageFiles(root);
+                    final Path location = commitToMergeWith.getFileLocation(path);
+                    Utils.copyToDir(location, dir);
+                    Files.copy(location, path, StandardCopyOption.REPLACE_EXISTING);
+                    index.put(path, dir.resolve(location.getFileName()));
+                }
+            }
+        } catch (IOException e) {
+            throw new MergeException("Failed to copy new files", e);
+        }
+
+        setParents(Stream.concat(getParents().stream(), commitToMergeWith.getParents().stream())
+                .collect(Collectors.toSet()));
+
+        try {
+            return commit();
+        } catch (CommitException e) {
+            throw new MergeException("Failed to commit merge", e);
         }
     }
 }
