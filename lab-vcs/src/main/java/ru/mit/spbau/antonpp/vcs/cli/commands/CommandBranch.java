@@ -6,21 +6,17 @@ import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.StatusReadingException;
-import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
-import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.BranchException;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Anton Mordberg
  * @since 23.10.16
  */
 @Parameters(commandNames = "branch", commandDescription = "Create a new branch")
-public class CommandBranch extends CommandWithRepository {
+public class CommandBranch extends AbstractCommand {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandBranch.class);
 
@@ -30,50 +26,33 @@ public class CommandBranch extends CommandWithRepository {
     @Parameter(required = true, description = "Name of the branch", arity = 1, validateValueWith = NoSpacesValidator.class)
     private List<String> name;
 
+    public CommandBranch() {
+        super(true);
+    }
+
+    @Override
+    public void runInternal() {
+        final String branch = name.get(0);
+        LOGGER.debug("User specified branch: {}", branch);
+        try {
+            if (toDelete) {
+                repository.addBranch(branch);
+            } else {
+                repository.deleteBranch(branch);
+
+            }
+        } catch (SerializationException | BranchException e) {
+            exitWithError(e, e.getMessage());
+
+        }
+    }
+
     private static final class NoSpacesValidator implements IValueValidator<String> {
 
         @Override
         public void validate(String name, String value) throws ParameterException {
             if (value.split(" ").length > 1) {
                 throw new ParameterException("Branch name must be without spaces.");
-            }
-        }
-    }
-
-    @Override
-    public void run() {
-        super.run();
-        LOGGER.debug("User specified branch: {}", name.get(0));
-        final Stage stage = repository.getStage();
-        if (!toDelete) {
-            try {
-                if (!stage.isClear() && stage.getBranch() != null) {
-                    System.out.println("You must commit changes before switching to another branch");
-                    System.exit(1);
-                } else {
-                    stage.setBranch(name.get(0));
-                }
-            } catch (StatusReadingException | IOException e) {
-                LOGGER.error("", e);
-                System.out.println("Failed to read stage status. Cannot switch to another branch");
-                System.exit(1);
-
-            }
-        } else {
-            final Map<String, String> branches;
-            try {
-                branches = Utils.readBranches(workingDir);
-                if (!branches.containsKey(name.get(0))) {
-                    System.out.println("No such branch");
-                } else {
-                    branches.remove(name.get(0));
-                    Utils.writeBranches(branches, workingDir);
-
-                }
-            } catch (IOException e) {
-                LOGGER.error("", e);
-                System.out.println("Failed to read branches. Cannot delete branch.");
-                System.exit(1);
             }
         }
     }

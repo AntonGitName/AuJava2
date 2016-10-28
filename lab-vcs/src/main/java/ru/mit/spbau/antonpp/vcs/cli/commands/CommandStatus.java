@@ -1,31 +1,25 @@
 package ru.mit.spbau.antonpp.vcs.cli.commands;
 
 import com.beust.jcommander.Parameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.StatusReadingException;
-import ru.mit.spbau.antonpp.vcs.core.revision.Status;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
 
 /**
  * @author Anton Mordberg
  * @since 23.10.16
  */
 @Parameters(commandNames = {"st", "status"}, commandDescription = "Print status")
-public class CommandStatus extends CommandWithRepository {
+public class CommandStatus extends AbstractCommand {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CommandStatus.class);
+    public CommandStatus() {
+        super(true);
+    }
 
     @Override
-    public void run() {
-        super.run();
+    public void runInternal() {
         try {
-            System.out.println(new Status(repository.getStage(), workingDir).toString());
-        } catch (StatusReadingException e) {
-            final String msg = "Failed to evaluate status.";
-            LOGGER.error(msg, e);
-            System.out.println(msg);
-            System.exit(1);
+            System.out.println(repository.status());
+        } catch (SerializationException e) {
+            exitWithError(e, "Failed to load revisions");
         }
-
     }
 }

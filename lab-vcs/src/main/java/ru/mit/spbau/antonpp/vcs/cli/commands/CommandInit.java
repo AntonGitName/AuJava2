@@ -1,9 +1,14 @@
 package ru.mit.spbau.antonpp.vcs.cli.commands;
 
 import com.beust.jcommander.Parameters;
-import com.google.common.hash.Hashing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.mit.spbau.antonpp.vcs.core.Repository;
+import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.CommitException;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
+import ru.mit.spbau.antonpp.vcs.core.log.RepositoryLog;
+import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.io.IOException;
@@ -15,62 +20,44 @@ import java.nio.file.Path;
  * @since 23.10.16
  */
 @Parameters(commandNames = "init", commandDescription = "Create index")
-public class CommandInit {
+public class CommandInit extends AbstractCommand {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandInit.class);
 
-    public void run() {
-        final Path workingDir = Utils.getCurrentDir();
-        final Path internals = Utils.getInternals(workingDir);
+    public CommandInit() {
+        super(false);
+    }
+
+    @Override
+    public void runInternal() {
+        final Path internals = Utils.getInternals(currentDir);
 
         LOGGER.debug("Internals path: {}", internals);
 
-        final Path rootDir = Utils.getWorkingDir();
-        if (rootDir != null) {
-            final String msg = String.format("This folder has already an initialised repository at %s.", rootDir);
-            LOGGER.warn(msg);
-            System.out.println(msg);
-            System.exit(1);
+        if (root != null) {
+            exitWithError(null, String.format("This folder has already an initialised repository at %s.", root));
         } else {
             try {
                 Files.createDirectories(internals);
-                Files.createDirectories(Utils.getStageFiles(workingDir));
-                Files.createDirectories(Utils.getRevisionsDir(workingDir));
+                Files.createDirectories(Utils.getStageFiles(currentDir));
+                Files.createDirectories(Utils.getRevisionsDir(currentDir));
 
-                final String initialCommitHash = Hashing.md5().hashString("").toString();
-                final String branch = "master";
-                final String branchRecord = String.format("%s %s\n", branch, initialCommitHash);
+                final Stage stage = new Stage();
+                stage.setRoot(currentDir);
+                final String initialCommitHash = stage.commit();
+                final Repository repository = new Repository();
+                repository.setRoot(currentDir);
+                repository.setHeadHash(initialCommitHash);
+                stage.serialize(Utils.getStageIndex(currentDir));
+                repository.serialize(Utils.getRepository(currentDir));
+                new RepositoryLog().serialize(Utils.getLogFile(currentDir));
+                new BranchResolver().serialize(Utils.getBranchesFile(currentDir));
 
-                // rev/files
-                Files.createDirectories(Utils.getRevisionFiles(workingDir, initialCommitHash));
-                // rev/parents.txt
-                Files.write(Utils.getRevisionParents(workingDir, initialCommitHash), initialCommitHash.getBytes());
-                // rev/index.txt
-                Files.createFile(Utils.getRevisionIndex(workingDir, initialCommitHash));
-
-                // stage/index.txt
-                Files.createFile(Utils.getStageIndex(workingDir));
-                // stage/branch.txt
-                Files.createFile(Utils.getStageBranch(workingDir));
-                // stage/files
-                Files.createDirectories(Utils.getStageFiles(workingDir));
-
-                // /head.txt
-                Files.write(Utils.getHeadHashFile(workingDir), initialCommitHash.getBytes());
-                // /log.txt
-                Files.write(Utils.getLogFile(workingDir), "".getBytes());
-                // /branches.txt
-                Files.write(Utils.getBranchesFile(workingDir), branchRecord.getBytes());
-
-                LOGGER.info("Commit {} created in {}", initialCommitHash, workingDir);
-
+                LOGGER.info("Commit {} created in {}", initialCommitHash, currentDir);
                 System.out.println("Initial commit has been created");
 
-            } catch (IOException e) {
-                final String msg = "Failed to create repository in this folder.";
-                LOGGER.error(msg, e);
-                System.out.println(msg);
-                System.exit(1);
+            } catch (IOException | SerializationException | CommitException e) {
+                exitWithError(e, "Failed to create repository in this folder.");
             }
 
         }

@@ -13,12 +13,6 @@ import ru.mit.spbau.antonpp.vcs.cli.commands.*;
 public class Application {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
-
-    private JCommander jc;
-
-    @Parameter(names = { "-h", "--help"}, description = "Print this help message and exit", help = true)
-    private boolean help;
-
     private final CommandAdd commandAdd = new CommandAdd();
     private final CommandBranch commandBranch = new CommandBranch();
     private final CommandCheckout commandCheckout = new CommandCheckout();
@@ -30,40 +24,9 @@ public class Application {
     private final CommandRemove commandRemove = new CommandRemove();
     private final CommandClean commandClean = new CommandClean();
     private final CommandLog commandLog = new CommandLog();
-
-    public static void main(String[] args) {
-        final Application app = new Application(args);
-        app.run();
-    }
-
-    private void run() {
-        jc.getParsedCommand();
-        final String command = jc.getParsedCommand();
-        if (command.equals("add")) {
-            commandAdd.run();
-        } else if (command.equals("branch")) {
-            commandBranch.run();
-        } else if (command.equals("checkout")) {
-//            commandCheckout.run();
-        } else if (command.equals("commit")) {
-            commandCommit.run();
-        } else if (command.equals("log")) {
-            commandLog.run();
-        } else if (command.equals("init")) {
-            commandInit.run();
-        } else if (command.equals("merge")) {
-//            commandMerge.run();
-        } else if (command.equals("status")) {
-            commandStatus.run();
-        } else if (command.equals("reset")) {
-            commandReset.run();
-        } else if (command.equals("rm")) {
-            commandRemove.run();
-        } else if (command.equals("clean")) {
-            commandClean.run();
-        }
-    }
-
+    private JCommander jc;
+    @Parameter(names = {"-h", "--help"}, description = "Print this help message and exit", help = true)
+    private boolean help;
 
     private Application(String[] args) {
         jc = new JCommander(this);
@@ -91,6 +54,39 @@ public class Application {
         if (help || jc.getParsedCommand() == null) {
             jc.usage();
             System.exit(0);
+        }
+    }
+
+    public static void main(String[] args) {
+        final Application app = new Application(args);
+        app.run();
+    }
+
+    private void run() {
+        jc.getParsedCommand();
+        final String command = jc.getParsedCommand();
+        if (command.equals("add")) {
+            commandAdd.run();
+        } else if (command.equals("branch")) {
+            commandBranch.run();
+        } else if (command.equals("checkout")) {
+            commandCheckout.run();
+        } else if (command.equals("commit")) {
+            commandCommit.run();
+        } else if (command.equals("log")) {
+            commandLog.run();
+        } else if (command.equals("init")) {
+            commandInit.run();
+        } else if (command.equals("merge")) {
+//            commandMerge.run();
+        } else if (command.equals("status")) {
+            commandStatus.run();
+        } else if (command.equals("reset")) {
+            commandReset.run();
+        } else if (command.equals("rm")) {
+            commandRemove.run();
+        } else if (command.equals("clean")) {
+            commandClean.run();
         }
     }
 
