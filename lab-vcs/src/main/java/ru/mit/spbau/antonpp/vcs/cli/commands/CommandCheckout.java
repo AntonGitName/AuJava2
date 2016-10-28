@@ -11,7 +11,7 @@ import java.util.List;
  * @author Anton Mordberg
  * @since 23.10.16
  */
-@Parameters(commandNames = {"co", "checkout"}, commandDescription = "Checkout revision")
+@Parameters(commandNames = "checkout", commandDescription = "Checkout revision")
 public class CommandCheckout extends AbstractCommand {
 
     @Parameter(required = true, description = "Name of the branch or commit hash", arity = 1)

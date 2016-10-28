@@ -7,7 +7,7 @@ import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
  * @author Anton Mordberg
  * @since 23.10.16
  */
-@Parameters(commandNames = {"st", "status"}, commandDescription = "Print status")
+@Parameters(commandNames = "status", commandDescription = "Print status")
 public class CommandStatus extends AbstractCommand {
 
     public CommandStatus() {

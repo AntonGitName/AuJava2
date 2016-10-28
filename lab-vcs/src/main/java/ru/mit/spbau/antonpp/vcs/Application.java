@@ -2,6 +2,8 @@ package ru.mit.spbau.antonpp.vcs;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.cli.commands.*;
 
 /**
@@ -9,6 +11,8 @@ import ru.mit.spbau.antonpp.vcs.cli.commands.*;
  * @since 23.10.16
  */
 public class Application {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
 
     private final CommandAdd commandAdd = new CommandAdd();
     private final CommandBranch commandBranch = new CommandBranch();
@@ -44,6 +48,7 @@ public class Application {
         try {
             jc.parse(args);
         } catch (Exception e) {
+            LOGGER.warn("Failed to parse input", e);
             System.out.println(e.getMessage());
             jc.usage();
             System.exit(1);
@@ -51,12 +56,13 @@ public class Application {
 
         if (help || jc.getParsedCommand() == null) {
             jc.usage();
+        } else {
+            run();
         }
     }
 
     public static void main(String[] args) {
-        final Application app = new Application(args);
-        app.run();
+        new Application(args);
     }
 
     private void run() {
