@@ -1,2 +1,2 @@
 rootProject.name = 'AuJava2'
-include "lab-vcs"
+include 'lab-vcs'
