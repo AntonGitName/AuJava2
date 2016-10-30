@@ -9,6 +9,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,9 +34,11 @@ public class ConnectionHandler implements Runnable {
         log.debug("Connected");
         try (DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
              DataInputStream dis = new DataInputStream(clientSocket.getInputStream())) {
-            while (isRunning) {
+            clientSocket.setSoTimeout(10000);
+            while (isRunning && !Thread.currentThread().isInterrupted()) {
                 handle(dis, dos);
             }
+            log.debug("Handler was interrupted: {}", Thread.currentThread().isInterrupted());
         } catch (IOException e) {
             throw new ConnectionException("Could not open I/O streams", e);
         } finally {
@@ -61,6 +64,8 @@ public class ConnectionHandler implements Runnable {
                     throw new ConnectionException("Unknown command");
             }
             log.debug("Request handled");
+        } catch (SocketTimeoutException e) {
+            log.debug("Socket read time limit exceeded", e);
         } catch (IOException e) {
             throw new ConnectionException("Failed to handle request", e);
         }

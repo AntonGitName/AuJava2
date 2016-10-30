@@ -38,7 +38,7 @@ public class PortListener implements Runnable {
                 final Socket clientSocket;
                 clientSocket = serverSocket.accept();
                 log.debug("Accepted a connection");
-                ListenableFuture<?> listenableFuture = handleService.submit(new ConnectionHandler(clientSocket));
+                final ListenableFuture<?> listenableFuture = handleService.submit(new ConnectionHandler(clientSocket));
                 Futures.addCallback(listenableFuture, new ConnectionCallback());
             } catch (IOException e) {
                 log.error("Could not accept connection", e);
@@ -49,7 +49,7 @@ public class PortListener implements Runnable {
     public void stop() throws IOException {
         isRunning = false;
         serverSocket.close();
-        handleService.shutdown();
+        handleService.shutdownNow();
     }
 
     private static final class ConnectionCallback implements FutureCallback<Object> {

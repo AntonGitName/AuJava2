@@ -19,6 +19,7 @@ import java.util.Scanner;
 public class Application {
 
     private final JCommander jc;
+    private FtpClient ftpClient;
 
     @Parameter(names = {"--host"})
     private String host = "localhost";
@@ -54,6 +55,9 @@ public class Application {
         System.out.printf(fmt, "exit", "Exit the application");
         System.out.printf(fmt, "get source destination", "Download specified file");
         System.out.printf(fmt, "list dir", "List contents of the dir");
+        System.out.printf(fmt, "connect", "Connect to the server " +
+                "(host and port were specified in command line arguments of the application)");
+        System.out.printf(fmt, "disconnect", "Disconnect from the server");
     }
 
     public static void main(String[] args) throws IOException {
@@ -62,49 +66,83 @@ public class Application {
 
     private void run() {
 
+        readlineLoop();
+        if (ftpClient != null) {
+            handleDisconnect();
+        }
+    }
+
+    private void readlineLoop() {
         val user = System.getProperty("user.name");
         val path = Paths.get(System.getProperty("user.home")).relativize(Paths.get(System.getProperty("user.dir")));
+        try (Scanner scanner = new Scanner(System.in)) {
+            while (true) {
+                System.out.printf("%s@~/%s$ ", user, path);
 
-        try (FtpClient ftpClient = new FtpClient(host, port)) {
+                val line = scanner.nextLine();
+                log.debug("User typed: {}", line);
+                val split = line.split("\\s+");
 
-            try (Scanner scanner = new Scanner(System.in)) {
+                switch (split[0]) {
 
-                while (true) {
-
-                    System.out.printf("%s@~/%s$ ", user, path);
-
-                    val line = scanner.nextLine();
-                    log.debug("User typed: {}", line);
-                    val split = line.split("\\s+");
-
-                    switch (split[0]) {
-
-                        case "exit":
-                            System.out.println("Bye!");
-                            return;
-                        case "get":
-                            handleGet(ftpClient, split);
-                            break;
-                        case "list":
-                            handleList(ftpClient, split);
-                            break;
-                        case "help":
-                        default:
-                            printCommands();
-                            break;
-                    }
+                    case "connect":
+                        handleConnect();
+                        break;
+                    case "disconnect":
+                        handleDisconnect();
+                        break;
+                    case "exit":
+                        System.out.println("Bye!");
+                        return;
+                    case "get":
+                        handleGet(split);
+                        break;
+                    case "list":
+                        handleList(split);
+                        break;
+                    case "help":
+                    default:
+                        printCommands();
+                        break;
                 }
             }
+        }
+    }
+
+    private void handleDisconnect() {
+        if (ftpClient == null) {
+            System.out.println("You must connect first");
+            return;
+        }
+        try {
+            ftpClient.close();
+            System.out.println("Disconnected from the server.");
+        } catch (IOException e) {
+            printToLogAndSout("Failed to correctly close client", e);
+        } finally {
+            ftpClient = null;
+        }
+    }
+
+    private void handleConnect() {
+        if (ftpClient != null) {
+            System.out.println("You are already connected");
+            return;
+        }
+        try {
+            ftpClient = new FtpClient(host, port);
+            System.out.println("Connected to the server.");
         } catch (FtpClientException e) {
             printToLogAndSout("Failed to start client " +
                     "(consider checking if FTP server is running on specified host:port)", e);
-        } catch (IOException e) {
-            printToLogAndSout("Failed to correctly close client", e);
         }
-
     }
 
-    private void handleList(FtpClient ftpClient, String[] split) {
+    private void handleList(String[] split) {
+        if (ftpClient == null) {
+            System.out.println("You must connect first");
+            return;
+        }
         if (split.length != 2) {
             System.out.println("You must provide exactly one path as an argument");
         } else {
@@ -118,7 +156,11 @@ public class Application {
         }
     }
 
-    private void handleGet(FtpClient ftpClient, String[] split) {
+    private void handleGet(String[] split) {
+        if (ftpClient == null) {
+            System.out.println("You must connect first");
+            return;
+        }
         if (split.length != 3) {
             System.out.println("You must provide path to the downloading file and where to save the result");
         } else {
