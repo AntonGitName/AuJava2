@@ -13,6 +13,9 @@ import java.nio.file.Path;
  */
 public interface FileSerializable extends Serializable {
     /**
+     * Saves current state with data to the specified file.
+     *
+     * @param path path to file.
      * @throws SerializationException in case of IOException during serialization
      */
     void serialize(Path path) throws SerializationException;
@@ -20,6 +23,7 @@ public interface FileSerializable extends Serializable {
     /**
      * Replace current state with data from input path containing serialized data
      *
+     * @param path path to file.
      * @throws SerializationException in case of IOException during deserialization
      */
     void deserialize(Path path) throws SerializationException;

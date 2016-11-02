@@ -5,7 +5,7 @@ import com.beust.jcommander.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
-import ru.mit.spbau.antonpp.vcs.core.log.CommitInfo;
+import ru.mit.spbau.antonpp.vcs.core.log.LogRecord;
 
 import java.util.List;
 
@@ -33,7 +33,7 @@ public class CommandLog extends AbstractCommand {
 
     @Override
     public void runInternal() {
-        final List<CommitInfo> logFileContent;
+        final List<LogRecord> logFileContent;
         try {
             logFileContent = repository.getLogRecords();
             printHeader();
@@ -58,7 +58,7 @@ public class CommandLog extends AbstractCommand {
         System.out.println();
     }
 
-    private void printLine(CommitInfo info) {
+    private void printLine(LogRecord info) {
         if (time) {
             System.out.printf("%18s\t", info.getTime());
         }
@@ -67,7 +67,7 @@ public class CommandLog extends AbstractCommand {
         }
         System.out.printf("%-6s\t", info.getShortHash());
         if (message) {
-            System.out.printf("%s\t", info.getMsg());
+            System.out.printf("%s\t", info.getMessage());
         }
         System.out.println();
         System.out.println();

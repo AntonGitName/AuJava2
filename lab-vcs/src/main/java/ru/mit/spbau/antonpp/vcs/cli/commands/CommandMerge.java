@@ -6,7 +6,7 @@ import lombok.val;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.CheckoutException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.MergeException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
-import ru.mit.spbau.antonpp.vcs.core.log.CommitInfo;
+import ru.mit.spbau.antonpp.vcs.core.log.LogRecord;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.util.List;
@@ -37,7 +37,7 @@ public class CommandMerge extends AbstractCommand {
             author = System.getProperty("user.name");
         }
         try {
-            val info = CommitInfo.builder().author(author).msg(message).time(Utils.getCurrentTime()).build();
+            val info = LogRecord.builder().author(author).message(message).time(Utils.getCurrentTime()).build();
             repository.merge(name.get(0), info);
         } catch (MergeException | SerializationException | CheckoutException e) {
             exitWithError(e, "Failed to merge.");

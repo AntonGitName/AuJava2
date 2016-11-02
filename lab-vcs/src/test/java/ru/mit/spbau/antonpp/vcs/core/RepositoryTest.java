@@ -10,7 +10,7 @@ import ru.mit.spbau.antonpp.vcs.core.exceptions.BranchException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.CheckoutException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.ResetException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
-import ru.mit.spbau.antonpp.vcs.core.log.CommitInfo;
+import ru.mit.spbau.antonpp.vcs.core.log.LogRecord;
 import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
 import ru.mit.spbau.antonpp.vcs.core.status.FileStatus;
 import ru.mit.spbau.antonpp.vcs.core.status.Status;
@@ -80,7 +80,7 @@ public class RepositoryTest {
         repository.addChanges(modified);
         repository.addChanges(removed);
 
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
 
         Files.delete(removed);
         createFile("modified_modified", modified);
@@ -100,7 +100,7 @@ public class RepositoryTest {
         assertTrue(diffBefore.entrySet().stream().anyMatch(x -> x.getValue() == MODIFIED));
         assertTrue(diffBefore.entrySet().stream().anyMatch(x -> x.getValue() == UNCHANGED));
 
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
 
         assertNotEquals(initialHash, repository.getHeadHash());
         assertEquals(logLen + 1, repository.getLogRecords().size());
@@ -124,7 +124,7 @@ public class RepositoryTest {
         final Path newFile = testDir.resolve("123.txt");
         createFile("123", newFile);
         repository.addChanges(newFile);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         Files.delete(newFile);
 
         repository.addChanges(newFile);
@@ -138,7 +138,7 @@ public class RepositoryTest {
         final Path newFile = testDir.resolve("123.txt");
         createFile("123", newFile);
         repository.addChanges(newFile);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         createFile("456", newFile);
 
         repository.addChanges(newFile);
@@ -152,7 +152,7 @@ public class RepositoryTest {
         final Path newFile = testDir.resolve("123.txt");
         createFile("123", newFile);
         repository.addChanges(newFile);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         createFile("123", newFile);
 
         repository.addChanges(newFile);
@@ -198,7 +198,7 @@ public class RepositoryTest {
 
         createFile("untracked", untracked);
 
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
 
         Files.delete(stageUnchangedWorkRemoved);
         createFile("stageUnchangedWorkModifiedM", stageUnchangedWorkModified);
@@ -260,7 +260,7 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         createFile("versioned_modified", versioned);
         repository.addChanges(versioned);
         repository.reset(versioned);
@@ -279,7 +279,7 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         createFile("versioned_modified", versioned);
         repository.reset(versioned);
         assertEquals("versioned", Utils.getFileContent(versioned));
@@ -305,13 +305,13 @@ public class RepositoryTest {
         repository.addBranch(branch1);
         createFile("1", file1);
         repository.addChanges(file1);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         repository.checkout("master");
         repository.addBranch(branch2);
         createFile("2", file2);
         repository.addChanges(file2);
-        repository.commit(new CommitInfo());
-        repository.merge(branch1, new CommitInfo());
+        repository.commit(new LogRecord());
+        repository.merge(branch1, new LogRecord());
         assertEquals("1", Utils.getFileContent(file1));
         assertEquals("2", Utils.getFileContent(file2));
     }
@@ -320,9 +320,9 @@ public class RepositoryTest {
     public void testLog() throws Exception {
         final Path newFile = testDir.resolve("123.txt");
         createFile("123", newFile);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         Files.delete(newFile);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         assertEquals(2, repository.getLogRecords().size());
 
     }
@@ -332,7 +332,7 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String branch = "development";
         repository.deleteBranch(branch);
     }
@@ -342,14 +342,14 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String branch = "development";
         repository.addBranch(branch);
         assertEquals(branch, repository.loadStage().getBranch());
 
         createFile("versioned_modified", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         assertEquals(branch, repository.loadStage().getBranch());
 
         repository.deleteBranch(branch);
@@ -357,7 +357,7 @@ public class RepositoryTest {
 
         createFile("versioned_modified2", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         try {
             repository.checkout(branch);
             fail("Checkout on deleted branch");
@@ -376,7 +376,7 @@ public class RepositoryTest {
         createFile("staged", staged);
         createFile("untracked", untracked);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         repository.addChanges(staged);
         repository.clean();
         assertEquals("versioned", Utils.getFileContent(versioned));
@@ -389,7 +389,7 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String branch = "development";
         repository.addBranch(branch);
         Stage stage = repository.loadStage();
@@ -400,7 +400,7 @@ public class RepositoryTest {
 
         createFile("versioned_modified", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         try {
             repository.checkout(branch);
             fail("Checkout on deleted branch");
@@ -423,7 +423,7 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String branch = "development";
         repository.addBranch(branch);
         final Stage stage = repository.loadStage();
@@ -435,11 +435,11 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String headHash = repository.getHeadHash();
         createFile("versioned_modified", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         repository.checkout(headHash);
         assertEquals(headHash, repository.getHeadHash());
         assertEquals("versioned", Utils.getFileContent(versioned));
@@ -450,11 +450,11 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String headHash = repository.getHeadHash();
         createFile("versioned_modified", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         repository.checkout(headHash.substring(0, 6));
         assertEquals(headHash, repository.getHeadHash());
         assertEquals("versioned", Utils.getFileContent(versioned));
@@ -466,10 +466,10 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         createFile("versioned_modified", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         repository.checkout("");
     }
 
@@ -478,11 +478,11 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String headHash = repository.getHeadHash();
         createFile("versioned_modified", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         repository.checkout("BAD" + headHash.substring(0, 6));
     }
 
@@ -491,14 +491,14 @@ public class RepositoryTest {
         final Path versioned = testDir.resolve("versioned.txt");
         createFile("versioned", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String headHash = repository.getHeadHash();
         final String oldBranch = "master";
         final String newBranch = "development";
         repository.addBranch(newBranch);
         createFile("versioned_modified", versioned);
         repository.addChanges(versioned);
-        repository.commit(new CommitInfo());
+        repository.commit(new LogRecord());
         final String newBranchHash = repository.getHeadHash();
         repository.checkout(oldBranch);
         assertEquals(headHash, repository.getHeadHash());

@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.*;
-import ru.mit.spbau.antonpp.vcs.core.log.CommitInfo;
+import ru.mit.spbau.antonpp.vcs.core.log.LogRecord;
 import ru.mit.spbau.antonpp.vcs.core.log.RepositoryLog;
 import ru.mit.spbau.antonpp.vcs.core.revision.Commit;
 import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
@@ -187,10 +187,10 @@ public class Repository implements FileSerializable {
      * @throws SerializationException if could not write data to the filesystem.
      * @throws CommitException        if could not write data to the filesystem (wrapping exception to provide more details).
      */
-    public void commit(CommitInfo info) throws SerializationException, CommitException {
+    public void commit(LogRecord info) throws SerializationException, CommitException {
         final Stage stage = loadStage();
-        if (info.getMsg() == null) {
-            info.setMsg(generateCommitMessage(loadHead(), stage));
+        if (info.getMessage() == null) {
+            info.setMessage(generateCommitMessage(loadHead(), stage));
         }
         final String commitHash = stage.commit();
         headHash = commitHash;
@@ -213,13 +213,13 @@ public class Repository implements FileSerializable {
      * @throws SerializationException if could not read/write data to the filesystem.
      * @throws MergeException         if specified commit was not found in repository
      */
-    public void merge(String revName, CommitInfo info) throws SerializationException, MergeException, CheckoutException {
+    public void merge(String revName, LogRecord info) throws SerializationException, MergeException, CheckoutException {
         final String commitHash = findCommitByHashOrBranch(revName);
         final Commit commit = loadCommit(commitHash);
         final Stage stage = loadStage();
 
-        if (info.getMsg() == null) {
-            info.setMsg(generateMergeMessage(headHash, commitHash));
+        if (info.getMessage() == null) {
+            info.setMessage(generateMergeMessage(headHash, commitHash));
         }
 
         final String mergeCommitHash = stage.merge(commit);
@@ -240,7 +240,7 @@ public class Repository implements FileSerializable {
      * @param info a record to append.
      * @throws SerializationException if log file could not be overwritten
      */
-    private void appendLogRecord(CommitInfo info) throws SerializationException {
+    private void appendLogRecord(LogRecord info) throws SerializationException {
         final RepositoryLog repositoryLog = loadLog();
         repositoryLog.addRecord(info);
         saveLog(repositoryLog);
@@ -357,7 +357,7 @@ public class Repository implements FileSerializable {
      * @return all records from log file in order from newest to oldest.
      * @throws SerializationException  if log file could not be loaded.
      */
-    public List<CommitInfo> getLogRecords() throws SerializationException {
+    public List<LogRecord> getLogRecords() throws SerializationException {
         final RepositoryLog repositoryLog = loadLog();
         return repositoryLog.getLogRecords();
     }
