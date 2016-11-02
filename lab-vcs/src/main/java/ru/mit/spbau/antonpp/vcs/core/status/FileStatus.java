@@ -1,8 +1,11 @@
 package ru.mit.spbau.antonpp.vcs.core.status;
 
 /**
+ * All possible states of tracked files in revision.
+ *
  * @author antonpp
  * @since 27/10/16
+ * @see Status
  */
 public enum FileStatus {
     ADDED, MODIFIED, REMOVED, UNCHANGED;
