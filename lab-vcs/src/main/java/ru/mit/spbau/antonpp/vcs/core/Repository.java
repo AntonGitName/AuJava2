@@ -1,7 +1,9 @@
 package ru.mit.spbau.antonpp.vcs.core;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.*;
@@ -32,7 +34,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class Repository implements FileSerializable {
 
+    @Setter(AccessLevel.PRIVATE)
     private Path root;
+    @Getter(AccessLevel.PACKAGE)
+    @Setter(AccessLevel.PRIVATE)
     private String headHash;
 
     public Repository() {
@@ -80,19 +85,6 @@ public class Repository implements FileSerializable {
                 throw new InitException(e);
             }
         }
-    }
-
-    // for tests
-    @NotNull String getHeadHash() {
-        return headHash;
-    }
-
-    private void setHeadHash(@NotNull String headHash) {
-        this.headHash = headHash;
-    }
-
-    private void setRoot(@NotNull Path root) {
-        this.root = root;
     }
 
     /**
@@ -198,7 +190,7 @@ public class Repository implements FileSerializable {
     public void commit(CommitInfo info) throws SerializationException, CommitException {
         final Stage stage = loadStage();
         if (info.getMsg() == null) {
-            info.setMsg(generateCommitMessage(stage));
+            info.setMsg(generateCommitMessage(loadHead(), stage));
         }
         final String commitHash = stage.commit();
         headHash = commitHash;
@@ -242,12 +234,26 @@ public class Repository implements FileSerializable {
         appendLogRecord(info);
     }
 
+    /**
+     * Appends a log record ro log file.
+     *
+     * @param info a record to append.
+     * @throws SerializationException if log file could not be overwritten
+     */
     private void appendLogRecord(CommitInfo info) throws SerializationException {
         final RepositoryLog repositoryLog = loadLog();
         repositoryLog.addRecord(info);
         saveLog(repositoryLog);
     }
 
+    /**
+     * Resolves full commit hash from branch name or hash prefix
+     *
+     * @param id branch name or hash prefix
+     * @return full commit hash
+     * @throws CheckoutException      if commit was not found in internal files
+     * @throws SerializationException if internal files could not be read
+     */
     private String findCommitByHashOrBranch(String id) throws CheckoutException, SerializationException {
         final BranchResolver branchResolver = loadBranchResolver();
         if (branchResolver.hasBranch(id)) {
@@ -265,6 +271,13 @@ public class Repository implements FileSerializable {
         return paths.get(0).getFileName().toString();
     }
 
+    /**
+     * Creates default message for a merge.
+     *
+     * @param headHash   full hash of HEAD.
+     * @param commitHash full hash of commit that is used in merge.
+     * @return message with names of merged commits or null if commits could not be read.
+     */
     private String generateMergeMessage(String headHash, String commitHash) {
         try {
             final BranchResolver branchResolver = loadBranchResolver();
@@ -279,27 +292,43 @@ public class Repository implements FileSerializable {
         }
     }
 
-    private String generateCommitMessage(Stage stage) {
-        try {
-            final Commit head = loadHead();
-            final RevisionDiff revisionDiff = new RevisionDiff(head, stage);
-            final Set<Map.Entry<Path, FileStatus>> entries = revisionDiff.getFiles().entrySet();
-            final long added = entries.stream().filter(x -> x.getValue() == FileStatus.ADDED).count();
-            final long modified = entries.stream().filter(x -> x.getValue() == FileStatus.MODIFIED).count();
-            final long removed = entries.stream().filter(x -> x.getValue() == FileStatus.REMOVED).count();
-            return String.format("Added: %d, Modified: %d, Removed: %d", added, modified, removed);
-        } catch (SerializationException e) {
-            log.warn("Failed to generate commit message", e);
-            return null;
-        }
+    /**
+     * Generates default message for a commit.
+     *
+     * @param head  HEAD commit
+     * @param stage stage
+     * @return message with short info about files modifications
+     * @see RevisionDiff
+     */
+    private String generateCommitMessage(Commit head, Stage stage) {
+        final RevisionDiff revisionDiff = new RevisionDiff(head, stage);
+        final Set<Map.Entry<Path, FileStatus>> entries = revisionDiff.getFiles().entrySet();
+        final long added = entries.stream().filter(x -> x.getValue() == FileStatus.ADDED).count();
+        final long modified = entries.stream().filter(x -> x.getValue() == FileStatus.MODIFIED).count();
+        final long removed = entries.stream().filter(x -> x.getValue() == FileStatus.REMOVED).count();
+        return String.format("Added: %d, Modified: %d, Removed: %d", added, modified, removed);
     }
 
+    /**
+     * Saves file in stage.
+     *
+     * @param path path to file.
+     * @throws SerializationException if stage could not be loaded.
+     * @throws StageAddException      if stage add failed (IO problems).
+     * @see Stage
+     */
     public void addChanges(Path path) throws SerializationException, StageAddException {
         final Stage stage = loadStage();
         stage.addChanges(path);
         saveStage(stage);
     }
 
+    /**
+     * Generates information about HEAD, Stage and unstaged changes.
+     *
+     * @return difference between three revisions.
+     * @throws SerializationException if revisions could not be loaded.
+     */
     public String status() throws SerializationException {
         final Stage stage = loadStage();
         final Commit head = loadHead();
@@ -308,17 +337,37 @@ public class Repository implements FileSerializable {
         return status;
     }
 
+    /**
+     * Resets file changes. If file is revisioned in HEAD, then it resets to this version. If it is only stage, then
+     * file is removed from stage.
+     *
+     * @param path path to file.
+     * @throws SerializationException if revisions could not be loaded.
+     * @throws ResetException if revisions could not be loaded or in you case you are trying to reset unrevisioned file.
+     */
     public void reset(Path path) throws SerializationException, ResetException {
         final Stage stage = loadStage();
         stage.reset(path);
         saveStage(stage);
     }
 
+    /**
+     * Never guess what it does. It returns log records!
+     *
+     * @return all records from log file in order from newest to oldest.
+     * @throws SerializationException  if log file could not be loaded.
+     */
     public List<CommitInfo> getLogRecords() throws SerializationException {
         final RepositoryLog repositoryLog = loadLog();
         return repositoryLog.getLogRecords();
     }
 
+    /**
+     * Removes all unstaged files.
+     *
+     * @throws SerializationException  if revisions could not be loaded
+     * @throws IOException  if files cannot be removed.
+     */
     public void clean() throws SerializationException, IOException {
         final Stage stage = loadStage();
         final WorkingDir workingDir = new WorkingDir(root);
@@ -333,16 +382,35 @@ public class Repository implements FileSerializable {
         }
     }
 
+    /**
+     * Loads branch resolver.
+     *
+     * @return deserialized instance.
+     * @throws SerializationException if branch resolver could not be loaded.
+     */
     private BranchResolver loadBranchResolver() throws SerializationException {
         final BranchResolver branchResolver = new BranchResolver();
         branchResolver.deserialize(Utils.getBranchesFile(root));
         return branchResolver;
     }
 
+    /**
+     * Saves branch resolver to the disk.
+     *
+     * @param branchResolver an instance to save.
+     * @throws SerializationException if branch resolver file could not be overwritten.
+     */
     private void saveBranchResolver(BranchResolver branchResolver) throws SerializationException {
         branchResolver.serialize(Utils.getBranchesFile(root));
     }
 
+    /**
+     * Deletes all records about branch. Does not affect any commits.
+     *
+     * @param branch branch name.
+     * @throws SerializationException as described in all other methods.
+     * @throws BranchException if branch with specified name does not exist.
+     */
     public void deleteBranch(String branch) throws SerializationException, BranchException {
         final Stage stage = loadStage();
         final BranchResolver branchResolver = loadBranchResolver();
@@ -363,6 +431,14 @@ public class Repository implements FileSerializable {
         }
     }
 
+    /**
+     * Creates new branch and marks stage with this name.
+     *
+     * @param branch branch name.
+     * @throws SerializationException if internal files could not be overwritten for some mysterious reason.
+     * @throws BranchException if branch with this name already exists or stage has uncommited changes and a branch
+     * name.
+     */
     public void addBranch(String branch) throws SerializationException, BranchException {
         final Stage stage = loadStage();
         final Commit head = loadHead();
@@ -379,12 +455,24 @@ public class Repository implements FileSerializable {
         saveStage(stage);
     }
 
+    /**
+     * Checks if HEAD and stage are different
+     *
+     * @param stage stage.
+     * @param head HEAD
+     * @return true if they are equal and false otherwise.
+     */
     private boolean isStageClear(Stage stage, Commit head) {
-        final RevisionDiff revisionDiff = new RevisionDiff(head, stage);
-        final Set<Map.Entry<Path, FileStatus>> entries = revisionDiff.getFiles().entrySet();
-        return entries.stream().allMatch(x -> x.getValue() == FileStatus.UNCHANGED);
+        return stage.getRevHash().equals(head.getRevHash());
     }
 
+    /**
+     * Marks commit as HEAD and updates stage so it is equal to the new HEAD.
+     *
+     * @param revName commit hash prefix or branch name
+     * @throws CheckoutException if stage has uncommited files.
+     * @throws SerializationException if internal files was not available for read/write.
+     */
     public void checkout(String revName) throws CheckoutException, SerializationException {
         final Stage stage = loadStage();
         Commit head = loadHead();
@@ -398,12 +486,26 @@ public class Repository implements FileSerializable {
         saveStage(stage);
     }
 
+    /**
+     * Gets branch name for commit.
+     *
+     * @param hash commit full hash.
+     * @return branch name or null if this commit is not latest on any branch.
+     * @throws SerializationException if internal files was not available for read/write.
+     */
     @Nullable
     private String getCommitBranch(String hash) throws SerializationException {
         return loadBranchResolver().findCommitBranch(hash);
     }
 
-    // for tests only
+    /**
+     * Returns the same as {@link #status()} but only for HEAD and Stage and wrapped in class to provide more
+     * flexibility. Must be used in tests only.
+     *
+     * @return comparison of HEAD and Stage
+     * @throws SerializationException if internal files was not available for read/write.
+     * @see Status
+     */
     Status getDetailedStatus() throws SerializationException {
         final Stage stage = loadStage();
         final Commit head = loadHead();
