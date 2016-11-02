@@ -30,7 +30,8 @@ public class CommandCommit extends AbstractCommand {
             author = System.getProperty("user.name");
         }
         try {
-            repository.commit(new CommitInfo(author, Utils.getCurrentTime(), message));
+            final CommitInfo info = CommitInfo.builder().author(author).time(Utils.getCurrentTime()).msg(message).build();
+            repository.commit(info);
         } catch (CommitException | SerializationException e) {
             exitWithError(e, "Failed to commit changes.");
         }

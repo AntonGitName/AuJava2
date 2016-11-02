@@ -15,19 +15,19 @@ import java.util.List;
  */
 public class RepositoryLog implements FileSerializable {
 
-    private List<CommitInfo> infos = new ArrayList<>();
+    private List<CommitInfo> logRecords = new ArrayList<>();
 
     public void addRecord(CommitInfo info) {
-        infos.add(info);
+        logRecords.add(info);
     }
 
-    public List<CommitInfo> getLog() {
-        return getLog(infos.size());
+    public List<CommitInfo> getLogRecords() {
+        return getLogRecords(logRecords.size());
     }
 
-    public List<CommitInfo> getLog(int nRecords) {
-        final int fromIndex = Math.max(infos.size() - nRecords, 0);
-        final ArrayList<CommitInfo> lastN = new ArrayList<>(infos.subList(fromIndex, infos.size()));
+    public List<CommitInfo> getLogRecords(int nRecords) {
+        final int fromIndex = Math.max(logRecords.size() - nRecords, 0);
+        final ArrayList<CommitInfo> lastN = new ArrayList<>(logRecords.subList(fromIndex, logRecords.size()));
         Collections.reverse(lastN);
         return lastN;
     }
@@ -35,7 +35,7 @@ public class RepositoryLog implements FileSerializable {
     @Override
     public void serialize(Path path) throws SerializationException {
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(path.toFile()))) {
-            os.writeObject(infos);
+            os.writeObject(logRecords);
         } catch (IOException e) {
             throw new SerializationException("Could not serialize getLogRecords", e);
         }
@@ -44,7 +44,7 @@ public class RepositoryLog implements FileSerializable {
     @Override
     public void deserialize(Path path) throws SerializationException {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(path.toFile()))) {
-            infos = (List<CommitInfo>) os.readObject();
+            logRecords = (List<CommitInfo>) os.readObject();
         } catch (IOException | ClassNotFoundException e) {
             throw new SerializationException("Could not deserialize revision", e);
         }

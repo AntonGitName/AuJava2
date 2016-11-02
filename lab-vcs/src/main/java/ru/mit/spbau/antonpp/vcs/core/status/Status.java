@@ -1,5 +1,6 @@
 package ru.mit.spbau.antonpp.vcs.core.status;
 
+import lombok.Getter;
 import ru.mit.spbau.antonpp.vcs.core.revision.Commit;
 import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
 import ru.mit.spbau.antonpp.vcs.core.revision.WorkingDir;
@@ -14,7 +15,9 @@ import java.util.Map;
  */
 public class Status {
 
+    @Getter
     private final RevisionDiff headDiff;
+    @Getter
     private final RevisionDiff stageDiff;
     private final String branch;
     private final String headHash;
@@ -24,14 +27,6 @@ public class Status {
         stageDiff = new RevisionDiff(stage, new WorkingDir(stage.getRoot()));
         branch = stage.getBranch();
         headHash = head.getRevHash();
-    }
-
-    public RevisionDiff getHeadDiff() {
-        return headDiff;
-    }
-
-    public RevisionDiff getStageDiff() {
-        return stageDiff;
     }
 
     @Override

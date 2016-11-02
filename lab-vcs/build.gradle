@@ -14,6 +14,9 @@ dependencies {
 
     testCompile group: 'commons-io', name: 'commons-io', version: '2.5'
 
+    // lombok annotations
+    compileOnly "org.projectlombok:lombok:1.16.10"
+
     // cli
     compile group: 'com.beust', name: 'jcommander', version: '1.48'
 

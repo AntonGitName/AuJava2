@@ -4,7 +4,7 @@ package ru.mit.spbau.antonpp.vcs.core.utils;
  * @author Anton Mordberg
  * @since 26.10.16
  */
-public class Constants {
+class Constants {
 
     static final String GLOBAL_INTERNALS = ".vcs-internals";
     static final String GLOBAL_LOGS = "log_dump";
@@ -20,8 +20,5 @@ public class Constants {
     static final String STAGE_FILES = "files";
 
     private Constants() {
-
     }
-
-
 }

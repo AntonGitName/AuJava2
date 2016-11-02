@@ -1,9 +1,8 @@
 package ru.mit.spbau.antonpp.vcs.core;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.*;
 import ru.mit.spbau.antonpp.vcs.core.log.CommitInfo;
@@ -30,9 +29,8 @@ import java.util.stream.Collectors;
  * @author Anton Mordberg
  * @since 26.10.16
  */
+@Slf4j
 public class Repository implements FileSerializable {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(Repository.class);
 
     private Path root;
     private String headHash;
@@ -77,7 +75,7 @@ public class Repository implements FileSerializable {
                 repository.saveBranchResolver(branchResolver);
                 repository.saveLog(new RepositoryLog());
 
-                LOGGER.debug("Commit {} created in {}", initialCommitHash, currentDir);
+                log.debug("Commit {} created in {}", initialCommitHash, currentDir);
             } catch (SerializationException | CommitException | IOException e) {
                 throw new InitException(e);
             }
@@ -276,7 +274,7 @@ public class Repository implements FileSerializable {
             final String nameCommit = commitBranch != null ? commitBranch : commitHash;
             return String.format("Merged %s with %s", nameHead, nameCommit);
         } catch (SerializationException e) {
-            LOGGER.warn("failed to generate merge message");
+            log.warn("failed to generate merge message");
             return null;
         }
     }
@@ -291,7 +289,7 @@ public class Repository implements FileSerializable {
             final long removed = entries.stream().filter(x -> x.getValue() == FileStatus.REMOVED).count();
             return String.format("Added: %d, Modified: %d, Removed: %d", added, modified, removed);
         } catch (SerializationException e) {
-            LOGGER.warn("Failed to generate commit message", e);
+            log.warn("Failed to generate commit message", e);
             return null;
         }
     }
@@ -318,7 +316,7 @@ public class Repository implements FileSerializable {
 
     public List<CommitInfo> getLogRecords() throws SerializationException {
         final RepositoryLog repositoryLog = loadLog();
-        return repositoryLog.getLog();
+        return repositoryLog.getLogRecords();
     }
 
     public void clean() throws SerializationException, IOException {
@@ -331,7 +329,7 @@ public class Repository implements FileSerializable {
 
         for (final Path path : untracked) {
             Files.delete(path);
-            LOGGER.debug("Removed untracked file: {}", path);
+            log.debug("Removed untracked file: {}", path);
         }
     }
 

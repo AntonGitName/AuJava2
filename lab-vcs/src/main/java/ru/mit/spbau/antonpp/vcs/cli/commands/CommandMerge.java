@@ -2,6 +2,7 @@ package ru.mit.spbau.antonpp.vcs.cli.commands;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import lombok.val;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.CheckoutException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.MergeException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
@@ -36,7 +37,8 @@ public class CommandMerge extends AbstractCommand {
             author = System.getProperty("user.name");
         }
         try {
-            repository.merge(name.get(0), new CommitInfo(author, Utils.getCurrentTime(), message));
+            val info = CommitInfo.builder().author(author).msg(message).time(Utils.getCurrentTime()).build();
+            repository.merge(name.get(0), info);
         } catch (MergeException | SerializationException | CheckoutException e) {
             exitWithError(e, "Failed to merge.");
         }

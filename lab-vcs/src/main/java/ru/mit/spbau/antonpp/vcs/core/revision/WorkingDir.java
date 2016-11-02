@@ -1,30 +1,25 @@
 package ru.mit.spbau.antonpp.vcs.core.revision;
 
-import com.google.common.hash.Hashing;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.HashCalculationException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * @author antonpp
  * @since 28/10/16
  */
-public class WorkingDir implements Revision {
+@Slf4j
+public final class WorkingDir extends AbstractRevision {
 
     @NotNull
     private final Path root;
-    @Nullable
-    protected String revHash;
 
     public WorkingDir(@NotNull Path root) {
         this.root = root;
@@ -50,19 +45,8 @@ public class WorkingDir implements Revision {
     }
 
     @Override
-    public boolean checkFile(Path path, String hash) {
+    public boolean checkFileEquals(Path path, String hash) {
         return Files.exists(path) && getFileHash(path).equals(hash);
     }
-
-    @Override
-    public @NotNull String getRevHash() {
-        if (revHash == null) {
-            final List<Path> files = new ArrayList<>(listFiles());
-            final String joinedHash = files.stream().sorted().map(this::getFileHash).collect(Collectors.joining());
-            revHash = Hashing.md5().hashString(joinedHash).toString();
-        }
-        return revHash;
-    }
-
 
 }

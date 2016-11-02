@@ -12,7 +12,7 @@ import java.util.Set;
  * @author Anton Mordberg
  * @since 26.10.16
  */
-public class Commit extends AbstractRevision {
+public final class Commit extends AbstractCommit {
 
     public Commit() {
     }
@@ -22,7 +22,6 @@ public class Commit extends AbstractRevision {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(path.toFile()))) {
             root = Paths.get((String) os.readObject());
             parents = (Set<String>) os.readObject();
-//            index = (Map<Path, Path>) os.readObject();
             index = Utils.deserializeMapWithPath(os, Path.class, Path.class);
         } catch (IOException | ClassNotFoundException e) {
             throw new SerializationException("Could not deserialize revision", e);
@@ -34,7 +33,6 @@ public class Commit extends AbstractRevision {
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(path.toFile()))) {
             os.writeObject(root.toString());
             os.writeObject(parents);
-//            os.writeObject(index);
             Utils.serializeMapWithPath(index, os, Path.class, Path.class);
         } catch (IOException e) {
             throw new SerializationException("Could not serialize revision", e);

@@ -34,7 +34,7 @@ public class Utils {
         return listFilesRecursively(root, Collections.singletonList(getInternals(root)));
     }
 
-    public static List<Path> listFilesRecursively(Path dir, List<Path> exclusions) {
+    private static List<Path> listFilesRecursively(Path dir, List<Path> exclusions) {
         final List<Path> result = new ArrayList<>();
         SimpleFileVisitor<Path> fileVisitor = new SimpleFileVisitor<Path>() {
 

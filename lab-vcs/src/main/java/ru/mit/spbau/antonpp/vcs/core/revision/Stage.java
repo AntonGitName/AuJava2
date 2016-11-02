@@ -1,8 +1,9 @@
 package ru.mit.spbau.antonpp.vcs.core.revision;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.*;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
@@ -21,21 +22,13 @@ import java.util.stream.Stream;
  * @author Anton Mordberg
  * @since 26.10.16
  */
-public class Stage extends AbstractRevision {
+@Slf4j
+public final class Stage extends AbstractCommit {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Stage.class);
-
+    @Getter
+    @Setter
     @Nullable
     private String branch;
-
-    @Nullable
-    public String getBranch() {
-        return branch;
-    }
-
-    public void setBranch(@Nullable String branch) {
-        this.branch = branch;
-    }
 
     public void reset(Path path) throws ResetException {
         final Commit parentWithFile;
@@ -45,8 +38,8 @@ public class Stage extends AbstractRevision {
             throw new ResetException("Could not access parent revision", e);
         }
         if (parentWithFile == null) {
-            LOGGER.debug("Reseting not versioned file");
-            if (!checkFile(path)) {
+            log.debug("Reseting not versioned file");
+            if (!checkFileInRevision(path)) {
                 throw new ResetException();
             }
             try {
@@ -56,7 +49,7 @@ public class Stage extends AbstractRevision {
             }
             index.remove(path);
         } else {
-            LOGGER.debug("Reseting versioned file");
+            log.debug("Reseting versioned file");
             final String fileHash = parentWithFile.getFileHash(path);
             final Path stageLocation = Utils.getStageFiles(root).resolve(fileHash);
             try {
@@ -130,7 +123,7 @@ public class Stage extends AbstractRevision {
         } catch (SerializationException e) {
             throw new CommitException("Failed to save commit", e);
         }
-        setParents(Collections.singleton(commit.getRevHash()));
+        setParents(Collections.singleton(getRevHash()));
         return getRevHash();
     }
 
@@ -149,7 +142,7 @@ public class Stage extends AbstractRevision {
         final List<Commit> revisions = loadParents();
         Commit parentWithThisFile = null;
         for (final Commit revision : revisions) {
-            if (revision.checkFile(path)) {
+            if (revision.checkFileInRevision(path)) {
                 parentWithThisFile = revision;
                 break;
             }
@@ -163,7 +156,7 @@ public class Stage extends AbstractRevision {
         Commit parentWithThisFile = null;
         final String fileHash = getFileHash(path);
         for (final Commit revision : revisions) {
-            if (revision.checkFile(path, fileHash)) {
+            if (revision.checkFileEquals(path, fileHash)) {
                 parentWithThisFile = revision;
                 break;
             }
@@ -197,6 +190,13 @@ public class Stage extends AbstractRevision {
         }
     }
 
+    private void copyFileFromRevision(AbstractRevision revision, Path path) throws IOException {
+        final Path dir = Utils.getStageFiles(root);
+        final Path location = revision.getRealFileLocation(path);
+        Utils.copyToDir(location, dir);
+        Files.copy(location, path, StandardCopyOption.REPLACE_EXISTING);
+        index.put(path, dir.resolve(location.getFileName()));
+    }
 
     public void checkoutRevision(AbstractRevision revision) throws CheckoutException {
         try {
@@ -205,11 +205,7 @@ public class Stage extends AbstractRevision {
             }
             index.clear();
             for (final Path path : revision.listFiles()) {
-                final Path dir = Utils.getStageFiles(root);
-                final Path location = revision.getRealFileLocation(path);
-                Utils.copyToDir(location, dir);
-                Files.copy(location, path, StandardCopyOption.REPLACE_EXISTING);
-                index.put(path, dir.resolve(location.getFileName()));
+                copyFileFromRevision(revision, path);
             }
             setParents(Collections.singleton(revision.getRevHash()));
             branch = null;
@@ -223,12 +219,8 @@ public class Stage extends AbstractRevision {
         final Set<Path> filesToMergeIn = commitToMergeWith.listFiles();
         try {
             for (final Path path : filesToMergeIn) {
-                if (!checkFile(path)) {
-                    final Path dir = Utils.getStageFiles(root);
-                    final Path location = commitToMergeWith.getRealFileLocation(path);
-                    Utils.copyToDir(location, dir);
-                    Files.copy(location, path, StandardCopyOption.REPLACE_EXISTING);
-                    index.put(path, dir.resolve(location.getFileName()));
+                if (!checkFileInRevision(path)) {
+                    copyFileFromRevision(commitToMergeWith, path);
                 }
             }
         } catch (IOException e) {

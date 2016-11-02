@@ -20,9 +20,11 @@ public interface Revision {
     Set<Path> listFiles();
 
 
-    boolean checkFile(Path path, String hash);
+    boolean checkFileEquals(Path path, String hash);
+
+    boolean checkFileInRevision(Path path);
 
 
-    @NotNull String getRevHash();
+    String getRevHash();
 
 }

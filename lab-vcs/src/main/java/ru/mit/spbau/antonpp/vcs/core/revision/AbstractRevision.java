@@ -1,77 +1,44 @@
 package ru.mit.spbau.antonpp.vcs.core.revision;
 
 import com.google.common.hash.Hashing;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import ru.mit.spbau.antonpp.vcs.core.FileSerializable;
 
 import java.nio.file.Path;
-import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * @author antonpp
  * @since 28/10/16
  */
-public abstract class AbstractRevision implements Revision, FileSerializable {
+@Slf4j
+abstract class AbstractRevision implements Revision {
 
-    @Nullable
-    protected String revHash;
+    @Getter(lazy = true)
+    @NotNull
+    private final String revHash = calcRevHash();
+    @Getter
+    @Setter
     protected Path root;
-    protected Map<Path, Path> index = new HashMap<>();
-    protected Set<String> parents;
-
-    public Path getRoot() {
-        return root;
-    }
-
-    public void setRoot(Path root) {
-        this.root = root;
-    }
-
-    public Set<String> getParents() {
-        return parents != null ? parents : Collections.emptySet();
-    }
-
-    public void setParents(Set<String> parents) {
-        this.parents = parents;
-    }
 
     @NotNull
-    public String getFileHash(Path path) {
-        if (index.containsKey(path)) {
-            return index.get(path).getFileName().toString();
-        }
-        throw new IllegalArgumentException("Specified file was not found in the revision.");
-    }
-
-    public Path getRealFileLocation(Path path) {
-        return index.get(path);
-    }
-
-    public Set<Path> listFiles() {
-        return index.keySet();
-    }
-
-    public boolean checkFile(Path path) {
-        return index.containsKey(path);
-    }
-
-    public boolean checkFile(Path path, String hash) {
-        return index.containsKey(path) && hash.equals(getFileHash(path));
-    }
-
-    @NotNull
-    public String getRevHash() {
-        if (revHash == null) {
-            revHash = calcRevHash();
-        }
-        return revHash;
-    }
-
     private String calcRevHash() {
-        final List<Path> files = new ArrayList<>(listFiles());
-        final String joinedHash = files.stream().sorted().map(this::getFileHash).collect(Collectors.joining());
-        return Hashing.md5().hashString(joinedHash).toString();
+        final String joinedHash = listFiles().stream().sorted().map(this::getFileHash).collect(Collectors.joining());
+        val hash = Hashing.md5().hashString(joinedHash).toString();
+        log.debug("Calculated hash for revision {} in class {} ", hash, this.getClass().getSimpleName());
+        return hash;
+    }
+
+    @Override
+    public boolean checkFileInRevision(Path path) {
+        return listFiles().contains(path);
+    }
+
+    @Override
+    public boolean checkFileEquals(Path path, String hash) {
+        return checkFileInRevision(path) && hash.equals(getFileHash(path));
     }
 }
