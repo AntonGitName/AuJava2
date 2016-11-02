@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
+ * Class that manages repository branches.
+ *
  * @author antonpp
  * @since 28/10/16
  */
@@ -36,10 +38,22 @@ public class BranchResolver implements FileSerializable {
         }
     }
 
+    /**
+     * Returns the latest commit in this branch.
+     *
+     * @param branch name of a branch.
+     * @return full commit hash.
+     */
     public String getBranchHead(String branch) {
         return resolver.get(branch);
     }
 
+    /**
+     * Opposite to {@link BranchResolver#getBranchHead(String)}.
+     *
+     * @param commitHash full commit hash.
+     * @return name of the branch.
+     */
     @Nullable
     public String findCommitBranch(String commitHash) {
         final Optional<String> branch = resolver.entrySet().stream().filter(x -> x.getValue().equals(commitHash))
@@ -47,14 +61,31 @@ public class BranchResolver implements FileSerializable {
         return branch.isPresent() ? branch.get() : null;
     }
 
+    /**
+     * removes all records with specified branch.
+     *
+     * @param branch name of the branch to delete.
+     */
     public void deleteBranch(String branch) {
         resolver.remove(branch);
     }
 
-    public void updateBranch(String branch, String comitHash) {
-        resolver.put(branch, comitHash);
+    /**
+     * Updates branch with new latest commit.
+     *
+     * @param branch     name of a branch.
+     * @param commitHash full hash of the commit.
+     */
+    public void updateBranch(String branch, String commitHash) {
+        resolver.put(branch, commitHash);
     }
 
+    /**
+     * Checks if the specified branch has any records.
+     *
+     * @param branch name of the branch.
+     * @return true if the specified branch has any records and false otherwise.
+     */
     public boolean hasBranch(String branch) {
         return resolver.containsKey(branch);
     }
