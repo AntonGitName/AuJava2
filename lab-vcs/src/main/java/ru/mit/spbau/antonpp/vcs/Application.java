@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.cli.commands.*;
 
 /**
+ * This class is an entry point of the application. It is responsible only for parsing arguments.
+ *
  * @author Anton Mordberg
  * @since 23.10.16
  */
@@ -80,7 +82,7 @@ public class Application {
             case "commit":
                 commandCommit.run();
                 break;
-            case "log":
+            case "getLogRecords":
                 commandLog.run();
                 break;
             case "init":

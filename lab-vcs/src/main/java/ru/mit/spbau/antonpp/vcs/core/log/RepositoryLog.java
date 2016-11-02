@@ -37,7 +37,7 @@ public class RepositoryLog implements FileSerializable {
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(path.toFile()))) {
             os.writeObject(infos);
         } catch (IOException e) {
-            throw new SerializationException("Could not serialize log", e);
+            throw new SerializationException("Could not serialize getLogRecords", e);
         }
     }
 

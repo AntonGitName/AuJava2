@@ -1,6 +1,7 @@
 package ru.mit.spbau.antonpp.vcs.core;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
@@ -24,6 +25,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
+ * This class provides API to work with vcs. It is also serializable in order to keep track of HEAD.
+ *
  * @author Anton Mordberg
  * @since 26.10.16
  */
@@ -37,8 +40,14 @@ public class Repository implements FileSerializable {
     public Repository() {
     }
 
-    public static void init() throws InitException {
-        final Path currentDir = Utils.getCurrentDir();
+    /**
+     * Creates an empty repository in specified directory.
+     *
+     * @param currentDir directory where new repository must be created.
+     * @throws InitException if another repository is already in specified directory or if internal files cannot be
+     *                       created due to some IO reasons.
+     */
+    public static void init(Path currentDir) throws InitException {
         final Path root = Utils.getRoot();
         if (root != null) {
             throw new InitException(String.format("This folder has already an initialised repository at %s.", root));
@@ -80,18 +89,23 @@ public class Repository implements FileSerializable {
         return headHash;
     }
 
-    public void setHeadHash(@NotNull String headHash) {
+    private void setHeadHash(@NotNull String headHash) {
         this.headHash = headHash;
     }
 
-    public void setRoot(@NotNull Path root) {
+    private void setRoot(@NotNull Path root) {
         this.root = root;
     }
 
+    /**
+     * Saves state of the repository to the disk.
+     *
+     * @param path a location where object can be serialized.
+     * @throws SerializationException if could not write data to the filesystem.
+     */
     @Override
     public void serialize(Path path) throws SerializationException {
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(path.toFile()))) {
-//            os.writeObject(root.toString());
             Utils.serializePath(root, os);
             os.writeObject(headHash);
         } catch (IOException e) {
@@ -99,10 +113,15 @@ public class Repository implements FileSerializable {
         }
     }
 
+    /**
+     * Loads state of the repository from the disk.
+     *
+     * @param path a location where object was serialized.
+     * @throws SerializationException if could not read data from the filesystem.
+     */
     @Override
     public void deserialize(Path path) throws SerializationException {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(path.toFile()))) {
-//            root = Paths.get((String) os.readObject());
             root = Utils.deserializePath(os);
             headHash = (String) os.readObject();
         } catch (IOException | ClassNotFoundException e) {
@@ -110,86 +129,142 @@ public class Repository implements FileSerializable {
         }
     }
 
+    /**
+     * Loads {@code Stage} into the memory.
+     *
+     * @return deserialized {@code Stage}.
+     * @throws SerializationException if could not read data from the filesystem.
+     */
     Stage loadStage() throws SerializationException {
         final Stage stage = new Stage();
         stage.deserialize(Utils.getStageIndex(root));
         return stage;
     }
 
+    /**
+     * Saves {@code Stage} to the disk.
+     *
+     * @param stage instance to save
+     * @throws SerializationException if could not write data to the filesystem.
+     */
     private void saveStage(Stage stage) throws SerializationException {
         stage.serialize(Utils.getStageIndex(root));
     }
 
+    /**
+     * Loads {@code RepositoryLog} into the memory.
+     *
+     * @return deserialized {@code RepositoryLog}.
+     * @throws SerializationException if could not read data from the filesystem.
+     */
     private RepositoryLog loadLog() throws SerializationException {
         final RepositoryLog repositoryLog = new RepositoryLog();
         repositoryLog.deserialize(Utils.getLogFile(root));
         return repositoryLog;
     }
 
+    /**
+     * Saves {@code RepositoryLog} to the disk.
+     *
+     * @param repositoryLog instance to save
+     * @throws SerializationException if could not write data to the filesystem.
+     */
     private void saveLog(RepositoryLog repositoryLog) throws SerializationException {
         repositoryLog.serialize(Utils.getLogFile(root));
     }
 
+    /**
+     * Loads {@code Commit} that was marked as HEAD into the memory.
+     *
+     * @return deserialized {@code Commit}.
+     * @throws SerializationException if could not read data from the filesystem.
+     */
     private Commit loadHead() throws SerializationException {
+        return loadCommit(headHash);
+    }
+
+    private Commit loadCommit(String hash) throws SerializationException {
         final Commit commit = new Commit();
-        commit.deserialize(Utils.getRevisionIndex(root, headHash));
+        commit.deserialize(Utils.getRevisionIndex(root, hash));
         return commit;
     }
 
+    /**
+     * Creates a new commit from files that were added to the stage. Adds information about new commit to the getLogRecords.
+     * Updates HEAD.
+     *
+     * @param info details that must be saved in getLogRecords file.
+     * @throws SerializationException if could not write data to the filesystem.
+     * @throws CommitException        if could not write data to the filesystem (wrapping exception to provide more details).
+     */
     public void commit(CommitInfo info) throws SerializationException, CommitException {
-        final RepositoryLog repositoryLog = loadLog();
         final Stage stage = loadStage();
         if (info.getMsg() == null) {
             info.setMsg(generateCommitMessage(stage));
         }
-        final String hash = stage.commit();
-        headHash = hash;
+        final String commitHash = stage.commit();
+        headHash = commitHash;
         if (stage.getBranch() != null) {
             final BranchResolver branchResolver = loadBranchResolver();
-            branchResolver.updateBranch(stage.getBranch(), hash);
+            branchResolver.updateBranch(stage.getBranch(), commitHash);
             saveBranchResolver(branchResolver);
         }
-        info.setHash(hash);
+        info.setHash(commitHash);
         saveStage(stage);
-        repositoryLog.addRecord(info);
-        saveLog(repositoryLog);
+
+        appendLogRecord(info);
     }
 
-    public void merge(String revName, CommitInfo info) throws SerializationException, MergeException {
-        final BranchResolver branchResolver = loadBranchResolver();
-        if (branchResolver.hasBranch(revName)) {
-            try {
-                revName = branchResolver.getBranchHead(revName);
-            } catch (BranchException e) {
-                // impossible
-            }
-        }
-        mergeByHash(revName, info);
-    }
-
-    private void mergeByHash(String commitHash, CommitInfo info) throws SerializationException, MergeException {
-        final Commit commit = new Commit();
-        try {
-            commit.deserialize(Utils.getRevisionIndex(root, commitHash));
-        } catch (SerializationException e) {
-            throw new MergeException("No commit find with this hash", e);
-        }
-        final RepositoryLog repositoryLog = loadLog();
+    /**
+     * Merges specified commit with staged files. Updates HEAD and getLogRecords.
+     *
+     * @param revName branch name or hash prefix of the commit
+     * @param info    information about merge that is added to the getLogRecords file.
+     * @throws SerializationException if could not read/write data to the filesystem.
+     * @throws MergeException         if specified commit was not found in repository
+     */
+    public void merge(String revName, CommitInfo info) throws SerializationException, MergeException, CheckoutException {
+        final String commitHash = findCommitByHashOrBranch(revName);
+        final Commit commit = loadCommit(commitHash);
         final Stage stage = loadStage();
+
         if (info.getMsg() == null) {
             info.setMsg(generateMergeMessage(headHash, commitHash));
         }
-        final String hash = stage.merge(commit);
-        headHash = hash;
+
+        final String mergeCommitHash = stage.merge(commit);
+        setHeadHash(mergeCommitHash);
         if (stage.getBranch() != null) {
             final BranchResolver branchResolver = loadBranchResolver();
-            branchResolver.updateBranch(stage.getBranch(), hash);
+            branchResolver.updateBranch(stage.getBranch(), mergeCommitHash);
             saveBranchResolver(branchResolver);
         }
         saveStage(stage);
-        info.setHash(hash);
+        info.setHash(mergeCommitHash);
+        appendLogRecord(info);
+    }
+
+    private void appendLogRecord(CommitInfo info) throws SerializationException {
+        final RepositoryLog repositoryLog = loadLog();
         repositoryLog.addRecord(info);
         saveLog(repositoryLog);
+    }
+
+    private String findCommitByHashOrBranch(String id) throws CheckoutException, SerializationException {
+        final BranchResolver branchResolver = loadBranchResolver();
+        if (branchResolver.hasBranch(id)) {
+            id = branchResolver.getBranchHead(id);
+        }
+        final List<Path> paths;
+        try {
+            paths = Utils.findRevisionByHash(root, id);
+        } catch (IOException e) {
+            throw new CheckoutException("Could not read revisions", e);
+        }
+        if (paths.size() != 1) {
+            throw new CheckoutException(String.format("Could not find single commit. Found: %s", paths));
+        }
+        return paths.get(0).getFileName().toString();
     }
 
     private String generateMergeMessage(String headHash, String commitHash) {
@@ -241,7 +316,7 @@ public class Repository implements FileSerializable {
         saveStage(stage);
     }
 
-    public List<CommitInfo> log() throws SerializationException {
+    public List<CommitInfo> getLogRecords() throws SerializationException {
         final RepositoryLog repositoryLog = loadLog();
         return repositoryLog.getLog();
     }
@@ -312,43 +387,22 @@ public class Repository implements FileSerializable {
         return entries.stream().allMatch(x -> x.getValue() == FileStatus.UNCHANGED);
     }
 
-    private void checkoutHash(String hashPrefix, String branch) throws CheckoutException, SerializationException {
-        final List<Path> paths;
-        try {
-            paths = Utils.findRevisionByHash(root, hashPrefix);
-        } catch (IOException e) {
-            throw new CheckoutException("Could not read revisions", e);
-        }
-        if (paths.size() != 1) {
-            throw new CheckoutException(String.format("Could not find single commit. Found: %s", paths));
-        }
+    public void checkout(String revName) throws CheckoutException, SerializationException {
         final Stage stage = loadStage();
         Commit head = loadHead();
         if (!isStageClear(stage, head)) {
             throw new CheckoutException("You must commit changes before checkout");
         }
-
-        headHash = paths.get(0).getFileName().toString();
+        setHeadHash(findCommitByHashOrBranch(revName));
         head = loadHead();
         stage.checkoutRevision(head);
-        stage.setBranch(branch);
+        stage.setBranch(getCommitBranch(revName));
         saveStage(stage);
     }
 
-    public void checkout(String revName) throws CheckoutException, SerializationException {
-        final BranchResolver branchResolver = loadBranchResolver();
-        final String branch;
-        if (branchResolver.hasBranch(revName)) {
-            try {
-                revName = branchResolver.getBranchHead(revName);
-            } catch (BranchException e) {
-                // impossible
-            }
-            branch = revName;
-        } else {
-            branch = branchResolver.findCommitBranch(revName);
-        }
-        checkoutHash(revName, branch);
+    @Nullable
+    private String getCommitBranch(String hash) throws SerializationException {
+        return loadBranchResolver().findCommitBranch(hash);
     }
 
     // for tests only

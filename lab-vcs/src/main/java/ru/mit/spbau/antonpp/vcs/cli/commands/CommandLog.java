@@ -13,7 +13,7 @@ import java.util.List;
  * @author Anton Mordberg
  * @since 23.10.16
  */
-@Parameters(commandNames = "log", commandDescription = "Show vcs log")
+@Parameters(commandNames = "getLogRecords", commandDescription = "Show vcs getLogRecords")
 public class CommandLog extends AbstractCommand {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandLog.class);
@@ -35,11 +35,11 @@ public class CommandLog extends AbstractCommand {
     public void runInternal() {
         final List<CommitInfo> logFileContent;
         try {
-            logFileContent = repository.log();
+            logFileContent = repository.getLogRecords();
             printHeader();
             logFileContent.forEach(this::printLine);
         } catch (SerializationException e) {
-            exitWithError(e, "Failed to read log.");
+            exitWithError(e, "Failed to read getLogRecords.");
         }
     }
 

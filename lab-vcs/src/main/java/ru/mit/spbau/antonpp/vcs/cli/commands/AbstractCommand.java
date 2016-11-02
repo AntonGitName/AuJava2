@@ -10,6 +10,8 @@ import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 import java.nio.file.Path;
 
 /**
+ * This class is used to reduce the amount of boilerplate code that loads repository and initializes path variables.
+ *
  * @author Anton Mordberg
  * @since 26.10.16
  */
@@ -21,7 +23,7 @@ public abstract class AbstractCommand {
 
     protected Repository repository;
     protected Path currentDir;
-    protected Path root;
+    private Path root;
 
     protected AbstractCommand(boolean needRepository) {
         this.needRepository = needRepository;

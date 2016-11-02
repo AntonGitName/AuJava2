@@ -2,7 +2,6 @@ package ru.mit.spbau.antonpp.vcs.core.branch;
 
 import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.FileSerializable;
-import ru.mit.spbau.antonpp.vcs.core.exceptions.BranchException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
 
 import java.io.*;
@@ -24,7 +23,7 @@ public class BranchResolver implements FileSerializable {
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(path.toFile()))) {
             os.writeObject(resolver);
         } catch (IOException e) {
-            throw new SerializationException("Could not serialize log", e);
+            throw new SerializationException("Could not serialize getLogRecords", e);
         }
     }
 
@@ -37,24 +36,18 @@ public class BranchResolver implements FileSerializable {
         }
     }
 
-    public String getBranchHead(String branch) throws BranchException {
-        if (!resolver.containsKey(branch)) {
-            throw new BranchException("No such branch");
-        }
+    public String getBranchHead(String branch) {
         return resolver.get(branch);
     }
 
     @Nullable
     public String findCommitBranch(String commitHash) {
-        final Optional<String> branch = resolver.entrySet().stream().filter(x -> x.getValue().equals(commitHash)).map(Map.Entry::getKey)
-                .findFirst();
+        final Optional<String> branch = resolver.entrySet().stream().filter(x -> x.getValue().equals(commitHash))
+                .map(Map.Entry::getKey).findFirst();
         return branch.isPresent() ? branch.get() : null;
     }
 
-    public void deleteBranch(String branch) throws BranchException {
-        if (!resolver.containsKey(branch)) {
-            throw new BranchException("No such branch");
-        }
+    public void deleteBranch(String branch) {
         resolver.remove(branch);
     }
 

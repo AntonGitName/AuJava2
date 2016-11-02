@@ -32,7 +32,7 @@ public class RepositoryInitTest {
 
     }
 
-    public void changeCurrentDir(Path path) {
+    private void changeCurrentDir(Path path) {
         System.setProperty("user.dir", path.toString());
     }
 
@@ -44,19 +44,19 @@ public class RepositoryInitTest {
     @Test
     public void testInit() throws Exception {
         assertNull(Utils.getRoot());
-        Repository.init();
+        Repository.init(testDir);
         assertEquals(Utils.getRoot(), testDir);
     }
 
     @Test(expected = InitException.class)
     public void testDoubleInit() throws Exception {
-        Repository.init();
+        Repository.init(testDir);
 
         final Path subFolder = testDir.resolve("whatever");
         Files.createDirectories(subFolder);
 
         changeCurrentDir(subFolder);
 
-        Repository.init();
+        Repository.init(testDir);
     }
 }

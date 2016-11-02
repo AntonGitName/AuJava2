@@ -29,7 +29,7 @@ public class CommandInit extends AbstractCommand {
         LOGGER.debug("Internals path: {}", internals);
 
         try {
-            Repository.init();
+            Repository.init(Utils.getCurrentDir());
             System.out.println("Repository initialised.");
         } catch (InitException e) {
             exitWithError(e, "Failed to create repository in this folder.");

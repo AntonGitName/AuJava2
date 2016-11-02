@@ -48,11 +48,11 @@ public class RepositoryTest {
     public void setUp() throws Exception {
         Files.createDirectories(testDir);
         System.setProperty("user.dir", testDir.toString());
-        Repository.init();
+        Repository.init(testDir);
         repository = loadRepository();
     }
 
-    public void createFile(String content, Path path) throws IOException {
+    private void createFile(String content, Path path) throws IOException {
         try (FileOutputStream fos = new FileOutputStream(path.toFile())) {
             IOUtils.write(content, fos, Charset.defaultCharset());
         }
@@ -93,7 +93,7 @@ public class RepositoryTest {
 
 
         final String initialHash = repository.getHeadHash();
-        final int logLen = repository.log().size();
+        final int logLen = repository.getLogRecords().size();
 
         final Map<Path, FileStatus> diffBefore = repository.getDetailedStatus().getHeadDiff().getFiles();
         assertTrue(diffBefore.entrySet().stream().anyMatch(x -> x.getValue() == ADDED));
@@ -103,7 +103,7 @@ public class RepositoryTest {
         repository.commit(new CommitInfo());
 
         assertNotEquals(initialHash, repository.getHeadHash());
-        assertEquals(logLen + 1, repository.log().size());
+        assertEquals(logLen + 1, repository.getLogRecords().size());
 
         final Map<Path, FileStatus> diffAfter = repository.getDetailedStatus().getHeadDiff().getFiles();
         assertTrue(diffAfter.entrySet().stream().allMatch(x -> x.getValue() == UNCHANGED));
@@ -323,7 +323,7 @@ public class RepositoryTest {
         repository.commit(new CommitInfo());
         Files.delete(newFile);
         repository.commit(new CommitInfo());
-        assertEquals(2, repository.log().size());
+        assertEquals(2, repository.getLogRecords().size());
 
     }
 
