@@ -12,19 +12,24 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
+ * Class that imitates a revision for all current files in working directory. Includes unrevisioned files.
+ *
  * @author antonpp
  * @since 28/10/16
  */
 @Slf4j
 public final class WorkingDir extends AbstractRevision {
 
-    @NotNull
-    private final Path root;
-
     public WorkingDir(@NotNull Path root) {
         this.root = root;
     }
 
+    /**
+     * Unlike for revisioned files calculates file's hash without any cashing.
+     *
+     * @param path path to file.
+     * @return file's md5 hash.
+     */
     @Override
     public @NotNull String getFileHash(Path path) {
         try {
@@ -39,6 +44,11 @@ public final class WorkingDir extends AbstractRevision {
         return path;
     }
 
+    /**
+     * Lists all files in repository except internal vcs files.
+     *
+     * @return list of all files.
+     */
     @Override
     public Set<Path> listFiles() {
         return new HashSet<>(Utils.listFilesRecursivelyExceptInternls(root));
