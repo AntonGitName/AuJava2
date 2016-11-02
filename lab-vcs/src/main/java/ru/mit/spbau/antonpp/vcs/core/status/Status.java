@@ -1,7 +1,7 @@
 package ru.mit.spbau.antonpp.vcs.core.status;
 
 import lombok.Getter;
-import ru.mit.spbau.antonpp.vcs.core.revision.Commit;
+import ru.mit.spbau.antonpp.vcs.core.revision.Revision;
 import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
 import ru.mit.spbau.antonpp.vcs.core.revision.WorkingDir;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
@@ -10,6 +10,9 @@ import java.nio.file.Path;
 import java.util.Map;
 
 /**
+ * This class wrappes information about comparison between three revisions. It is supposed to be used for vcs status
+ * message generation (that's why revisions are called Head, Stage and WorkingDir).
+ *
  * @author Anton Mordberg
  * @since 26.10.16
  */
@@ -22,10 +25,30 @@ public class Status {
     private final String branch;
     private final String headHash;
 
-    public Status(Commit head, Stage stage) {
+    /**
+     * Saves all the information about files modifications between three revisions. Second revision is always stage
+     * because status needs information about current branch.
+     *
+     * @param head  HEAD.
+     * @param stage stage.
+     */
+    public Status(Revision head, Stage stage) {
+        this(head, stage, stage.getBranch(), stage.getRoot());
+    }
+
+    /**
+     * This constructor can compare not only HEAD and Stage, but any types of revisions. This functionality is currently
+     * unused and constructor is made private.
+     *
+     * @param head   first revision.
+     * @param stage  second revision.
+     * @param branch stages's branch.
+     * @param root   repository root.
+     */
+    private Status(Revision head, Revision stage, String branch, Path root) {
+        this.branch = branch;
         headDiff = new RevisionDiff(head, stage);
-        stageDiff = new RevisionDiff(stage, new WorkingDir(stage.getRoot()));
-        branch = stage.getBranch();
+        stageDiff = new RevisionDiff(stage, new WorkingDir(root));
         headHash = head.getRevHash();
     }
 
@@ -54,6 +77,12 @@ public class Status {
         return sb.toString();
     }
 
+    /**
+     * Creates relative to repository root path. Should be used only for files in repository.
+     *
+     * @param fullPath path to be shorten.
+     * @return relative path.
+     */
     private Path relative(Path fullPath) {
         return Utils.getCurrentDir().relativize(fullPath);
     }
