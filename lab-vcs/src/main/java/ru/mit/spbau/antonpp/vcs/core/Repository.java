@@ -180,7 +180,7 @@ public class Repository implements FileSerializable {
     }
 
     /**
-     * Creates a new commit from files that were added to the stage. Adds information about new commit to the getLogRecords.
+     * Creates a new commit from files that were added to the stage. Adds information about new commit to the log file.
      * Updates HEAD.
      *
      * @param info details that must be saved in getLogRecords file.
@@ -314,7 +314,7 @@ public class Repository implements FileSerializable {
      *
      * @param path path to file.
      * @throws SerializationException if stage could not be loaded.
-     * @throws StageAddException      if stage add failed (IO problems).
+     * @throws StageAddException if stage add failed (IO problems).
      * @see Stage
      */
     public void addChanges(Path path) throws SerializationException, StageAddException {

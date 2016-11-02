@@ -19,6 +19,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
+ * Core class of the application. All changes to revisions are made here.
+ *
  * @author Anton Mordberg
  * @since 26.10.16
  */
@@ -30,6 +32,13 @@ public final class Stage extends AbstractCommit {
     @Nullable
     private String branch;
 
+    /**
+     * Resets file changes. If file is revisioned in HEAD, then it resets to this version. If it is only stage, then
+     * file is removed from stage.
+     *
+     * @param path path to file.
+     * @throws ResetException if revisions could not be loaded or in you case you are trying to reset unrevisioned file.
+     */
     public void reset(Path path) throws ResetException {
         final Commit parentWithFile;
         try {
@@ -62,6 +71,13 @@ public final class Stage extends AbstractCommit {
         }
     }
 
+    /**
+     * Applies modification of the file to the stage. It can be one of three: file addition, file modification,
+     * file removal.
+     *
+     * @param path path to file.
+     * @throws StageAddException wrapped IO exception.
+     */
     public void addChanges(Path path) throws StageAddException {
         try {
             removeIfExist(path);
@@ -81,12 +97,27 @@ public final class Stage extends AbstractCommit {
 
     }
 
+    /**
+     * Safely removes file from stage index.
+     *
+     * @param path path to file.
+     * @throws IOException if could not remove file.
+     */
     private void removeIfExist(Path path) throws IOException {
         if (index.containsKey(path)) {
             Files.delete(getRealFileLocation(path));
         }
     }
 
+    /**
+     * Creates a new commit from files that were added to the stage. Stage itself has a copy of all revisioned files,
+     * but a new commit will have copies of only that files that cannot be found in its parents indexes. That means if
+     * this commit has 10 files in revision and only 2 of them are not the same as they very in parents revisions (i.e.
+     * files were dded or modified) then only these 2 files will be stored on the disk with new commit, thus optimising
+     * disk usage.
+     *
+     * @throws CommitException if could not write data to the filesystem (wrapping exception to provide more details).
+     */
     public String commit() throws CommitException {
         final String commitHash = getRevHash();
 
@@ -127,6 +158,12 @@ public final class Stage extends AbstractCommit {
         return getRevHash();
     }
 
+    /**
+     * Loads from disk parent commits.
+     *
+     * @return List of parent commits.
+     * @throws SerializationException if could not load internal files.
+     */
     private List<Commit> loadParents() throws SerializationException {
         final List<Commit> revisions = new ArrayList<>(getParents().size());
         for (final String parentHash : getParents()) {
@@ -137,6 +174,13 @@ public final class Stage extends AbstractCommit {
         return revisions;
     }
 
+    /**
+     * Finds one parent that has file with the same path as the specified file in its index.
+     *
+     * @param path path to file that is searched in indexes.
+     * @return parent commit or null if none match.
+     * @throws SerializationException if could not load internal files.
+     */
     @Nullable
     private Commit findParentWithFile(Path path) throws SerializationException {
         final List<Commit> revisions = loadParents();
@@ -150,6 +194,13 @@ public final class Stage extends AbstractCommit {
         return parentWithThisFile;
     }
 
+    /**
+     * Finds one parent that has the same version of the specified file in its index.
+     *
+     * @param path path to file that is searched in indexes.
+     * @return parent commit or null if none match.
+     * @throws SerializationException if could not load internal files.
+     */
     @Nullable
     private Commit findParentWithExactFile(Path path) throws SerializationException {
         final List<Commit> revisions = loadParents();
@@ -170,7 +221,6 @@ public final class Stage extends AbstractCommit {
             Utils.serializePath(root, os);
             os.writeObject(parents);
             os.writeObject(branch);
-//            os.writeObject(index);
             Utils.serializeMapWithPath(index, os, Path.class, Path.class);
         } catch (IOException e) {
             throw new SerializationException("Could not serialize revision", e);
@@ -183,14 +233,20 @@ public final class Stage extends AbstractCommit {
             root = Utils.deserializePath(os);
             parents = (Set<String>) os.readObject();
             branch = (String) os.readObject();
-//            index = (Map<Path, Path>) os.readObject();
             index = Utils.deserializeMapWithPath(os, Path.class, Path.class);
         } catch (IOException | ClassNotFoundException e) {
             throw new SerializationException("Could not deserialize revision", e);
         }
     }
 
-    private void copyFileFromRevision(AbstractRevision revision, Path path) throws IOException {
+    /**
+     * Copies file from specified revision to the stage.
+     *
+     * @param revision revision with file.
+     * @param path     path to the file.
+     * @throws IOException if could not copy file.
+     */
+    private void copyFileFromRevision(Revision revision, Path path) throws IOException {
         final Path dir = Utils.getStageFiles(root);
         final Path location = revision.getRealFileLocation(path);
         Utils.copyToDir(location, dir);
@@ -198,7 +254,13 @@ public final class Stage extends AbstractCommit {
         index.put(path, dir.resolve(location.getFileName()));
     }
 
-    public void checkoutRevision(AbstractRevision revision) throws CheckoutException {
+    /**
+     * Copies all files from revision to the stage making them equal.
+     *
+     * @param revision revision to checkout.
+     * @throws CheckoutException if could not copy files.
+     */
+    public void checkoutRevision(Revision revision) throws CheckoutException {
         try {
             for (final Path path : listFiles()) {
                 removeIfExist(path);
@@ -214,8 +276,20 @@ public final class Stage extends AbstractCommit {
         }
     }
 
-    // accept ours always
-    public String merge(Commit commitToMergeWith) throws MergeException {
+    /**
+     * Merges stage with another commit. Resolving strategy works as follows:
+     * <ul>
+     * <li> Copy all files from stage to the new commit. </li>
+     * <li> Copy all files from {@code commitToMergeWith} that do not exist in stage. </li>
+     * <li> Commit result and update stage that new commit is a parent of updated stage. </li>
+     * </ul>
+     *
+     * @param commitToMergeWith commit to merge with.
+     * @return full hash of a new commit.
+     * @throws MergeException if could not copy files or perform a commit.
+     * @see Stage#commit()
+     */
+    public String merge(AbstractCommit commitToMergeWith) throws MergeException {
         final Set<Path> filesToMergeIn = commitToMergeWith.listFiles();
         try {
             for (final Path path : filesToMergeIn) {
