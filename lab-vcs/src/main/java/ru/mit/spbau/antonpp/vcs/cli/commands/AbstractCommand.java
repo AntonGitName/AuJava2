@@ -23,6 +23,11 @@ public abstract class AbstractCommand {
     protected Path currentDir;
     private Path root;
 
+    /**
+     * Specifies if repository should be loaded.
+     *
+     * @param needRepository true if needed for a subclass
+     */
     protected AbstractCommand(boolean needRepository) {
         this.needRepository = needRepository;
     }
@@ -33,6 +38,9 @@ public abstract class AbstractCommand {
         postRun();
     }
 
+    /**
+     * Releases used resources.
+     */
     private void postRun() {
         if (needRepository) {
             try {
@@ -45,6 +53,9 @@ public abstract class AbstractCommand {
         // no need to serialize head
     }
 
+    /**
+     * Acquires resources.
+     */
     private void preRun() {
         root = Utils.getRoot();
         currentDir = Utils.getCurrentDir();
@@ -74,5 +85,9 @@ public abstract class AbstractCommand {
         System.exit(1);
     }
 
+    /**
+     * Any subclass must override this method and define all useful work there because it is only place where
+     * {@link Repository} instance is available.
+     */
     protected abstract void runInternal();
 }
