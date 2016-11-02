@@ -9,6 +9,10 @@ project.ext {
     targetDir = 'target'
 }
 
+task deploy {
+    dependsOn ':lab-vcs:deploy'
+}
+
 subprojects {
     sourceCompatibility = 1.8
     targetCompatibility = 1.8

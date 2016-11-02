@@ -20,6 +20,7 @@ task deploy {
         from jar.archivePath
         into rootProject.targetDir
     }
+    println "Created jar in folder `$projectDir/$rootProject.targetDir`"
 }
 
 dependencies {
