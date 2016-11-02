@@ -6,6 +6,8 @@ import java.io.Serializable;
 import java.nio.file.Path;
 
 /**
+ * Interface that declares methods to save/load state of a class.
+ *
  * @author antonpp
  * @since 27/10/16
  */
