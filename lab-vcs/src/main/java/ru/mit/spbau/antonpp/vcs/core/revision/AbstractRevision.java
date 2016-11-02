@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.util.stream.Collectors;
 
 /**
+ * This class add to {@link Revision} interface two things: caching of revision hash and path to the root of repository.
+ *
  * @author antonpp
  * @since 28/10/16
  */
@@ -24,6 +26,11 @@ abstract class AbstractRevision implements Revision {
     @Setter
     protected Path root;
 
+    /**
+     * Calculates revision hash as described in {@link Revision#getRevHash()}.
+     *
+     * @return revision hash.
+     */
     @NotNull
     private String calcRevHash() {
         final String joinedHash = listFiles().stream().sorted().map(this::getFileHash).collect(Collectors.joining());

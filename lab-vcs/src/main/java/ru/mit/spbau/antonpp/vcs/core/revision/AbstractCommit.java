@@ -11,6 +11,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ *  This class add to {@link AbstractRevision} class index of versioned files, parent commits and
+ *  {@link FileSerializable} interface
+ *
  * @author antonpp
  * @since 02/11/2016
  */
@@ -20,6 +23,7 @@ abstract class AbstractCommit extends AbstractRevision implements FileSerializab
     @Setter
     protected Set<String> parents;
 
+    @NotNull
     public Set<String> getParents() {
         return parents != null ? parents : Collections.emptySet();
     }
