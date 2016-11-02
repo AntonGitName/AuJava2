@@ -9,6 +9,13 @@ import java.nio.file.Paths;
 import java.util.Set;
 
 /**
+ * This class represents revisions name commits. A few things you about commits:
+ * <ul>
+ *     <li> All commits (possibly except first one) are always created in {@link Stage} class</li>
+ *     <li> Any commit should be deserialized only once and it is never updated </li>
+ *     <li> Commits hold index about all files they have but files are stored compressed and are spread between commits</li>
+ * </ul>
+ *
  * @author Anton Mordberg
  * @since 26.10.16
  */
