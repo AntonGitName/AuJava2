@@ -10,6 +10,18 @@ jar {
     }
 }
 
+task createTargetDir {
+    mkdir rootProject.targetDir
+}
+
+task deploy {
+    dependsOn jar, createTargetDir
+    copy {
+        from jar.archivePath
+        into rootProject.targetDir
+    }
+}
+
 dependencies {
 
     testCompile group: 'commons-io', name: 'commons-io', version: '2.5'

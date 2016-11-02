@@ -5,6 +5,9 @@ allprojects {
     version = '1.0'
 }
 
+project.ext {
+    targetDir = 'target'
+}
 
 subprojects {
     sourceCompatibility = 1.8

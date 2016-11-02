@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.cli.commands.*;
 
 /**
- * This class is an entry point of the application. It is responsible only for parsing arguments.
+ * This class is an entry point of the application. It is responsible only for arguments parsing.
  *
  * @author Anton Mordberg
  * @since 23.10.16
