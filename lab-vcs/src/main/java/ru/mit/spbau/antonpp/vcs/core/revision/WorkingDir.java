@@ -25,7 +25,7 @@ public final class WorkingDir extends AbstractRevision {
     }
 
     /**
-     * Unlike for revisioned files calculates file's hash without any cashing.
+     * Unlike for revisioned files calculates file's hash without any caching.
      *
      * @param path path to file.
      * @return file's md5 hash.
@@ -39,7 +39,9 @@ public final class WorkingDir extends AbstractRevision {
         }
     }
 
+
     @Override
+    @NotNull
     public Path getRealFileLocation(Path path) {
         return path;
     }
@@ -50,6 +52,7 @@ public final class WorkingDir extends AbstractRevision {
      * @return list of all files.
      */
     @Override
+    @NotNull
     public Set<Path> listFiles() {
         return new HashSet<>(Utils.listFilesRecursivelyExceptInternls(root));
     }

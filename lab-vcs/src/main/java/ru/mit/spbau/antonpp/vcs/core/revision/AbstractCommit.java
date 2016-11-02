@@ -34,11 +34,13 @@ abstract class AbstractCommit extends AbstractRevision implements FileSerializab
     }
 
     @Override
+    @NotNull
     public Path getRealFileLocation(Path path) {
         return index.get(path);
     }
 
     @Override
+    @NotNull
     public Set<Path> listFiles() {
         return index.keySet();
     }
