@@ -16,17 +16,13 @@ import java.io.Serializable;
 @ToString
 public class LogRecord implements Serializable {
 
-    @Getter
-    @Setter
+    @Getter @Setter
     private String message;
-    @Getter
-    @Setter
+    @Getter @Setter
     private String author;
-    @Getter
-    @Setter
+    @Getter @Setter
     private String time;
-    @Getter
-    @Setter
+    @Getter @Setter
     private String hash;
 
     public LogRecord() {
