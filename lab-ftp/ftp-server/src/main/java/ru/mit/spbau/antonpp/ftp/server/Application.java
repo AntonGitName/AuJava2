@@ -12,6 +12,8 @@ import java.util.Scanner;
 
 
 /**
+ * This is class is an entry point of server application. It holds server instance and responsible for user interface.
+ *
  * @author antonpp
  * @since 29/10/16
  */

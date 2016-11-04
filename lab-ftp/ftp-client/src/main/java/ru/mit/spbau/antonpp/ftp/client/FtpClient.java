@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * This is class holds client socket and implements client-side protocol.
+ *
  * @author antonpp
  * @since 30/10/2016
  */

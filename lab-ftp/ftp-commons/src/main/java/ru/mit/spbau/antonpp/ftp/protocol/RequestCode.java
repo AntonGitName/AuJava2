@@ -1,6 +1,8 @@
 package ru.mit.spbau.antonpp.ftp.protocol;
 
 /**
+ * This class holds constants that denote all supported requests through ftp protocol
+ *
  * @author antonpp
  * @since 29/10/2016
  */

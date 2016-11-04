@@ -12,6 +12,8 @@ import java.nio.file.Paths;
 import java.util.Scanner;
 
 /**
+ * This class is an entry point of the application. It is responsible for CLI.
+ *
  * @author antonpp
  * @since 30/10/2016
  */
