@@ -1,2 +1,2 @@
 # AuJava2
-SPbAu Java II albs
+SPb AU Java II labs

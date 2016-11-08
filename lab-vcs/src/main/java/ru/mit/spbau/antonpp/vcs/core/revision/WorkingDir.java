@@ -39,7 +39,6 @@ public final class WorkingDir extends AbstractRevision {
         }
     }
 
-
     @Override
     @NotNull
     public Path getRealFileLocation(Path path) {

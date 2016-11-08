@@ -82,7 +82,7 @@ public class Application {
             case "commit":
                 commandCommit.run();
                 break;
-            case "getLogRecords":
+            case "log":
                 commandLog.run();
                 break;
             case "init":

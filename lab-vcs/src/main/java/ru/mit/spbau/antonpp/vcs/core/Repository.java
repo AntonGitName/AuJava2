@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.branch.BranchResolver;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.*;
@@ -20,6 +21,7 @@ import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -169,7 +171,7 @@ public class Repository implements FileSerializable {
      * @return deserialized {@code Commit}.
      * @throws SerializationException if could not read data from the filesystem.
      */
-    private Commit loadHead() throws SerializationException {
+    Commit loadHead() throws SerializationException {
         return loadCommit(headHash);
     }
 
@@ -463,7 +465,7 @@ public class Repository implements FileSerializable {
      * @return true if they are equal and false otherwise.
      */
     private boolean isStageClear(Stage stage, Commit head) {
-        return stage.getRevHash().equals(head.getRevHash());
+        return stage.getRevHash().equals(head.getFilesHash());
     }
 
     /**
@@ -479,11 +481,30 @@ public class Repository implements FileSerializable {
         if (!isStageClear(stage, head)) {
             throw new CheckoutException("You must commit changes before checkout");
         }
-        setHeadHash(findCommitByHashOrBranch(revName));
+        val fullHash = findCommitByHashOrBranch(revName);
+        setHeadHash(fullHash);
         head = loadHead();
         stage.checkoutRevision(head);
-        stage.setBranch(getCommitBranch(revName));
+        stage.setBranch(getCommitBranch(fullHash));
         saveStage(stage);
+    }
+
+    /**
+     * Lists all branches and highlights the current branch.
+     *
+     * @return string representation of list of branches.
+     * @throws SerializationException  if internal files was not available for reading.
+     */
+    public String listBranches() throws SerializationException {
+        val stage = loadStage();
+        val branchResolver = loadBranchResolver();
+        val allBranches = new HashSet<String>(branchResolver.getAllBranches());
+        val branch = stage.getBranch();
+        if (branch != null) {
+            allBranches.add(branch);
+        }
+        return allBranches.stream().map(x -> String.format("  %s", (x.equals(branch) ? "* "  : "  ") + x))
+                .collect(Collectors.joining("\n"));
     }
 
     /**

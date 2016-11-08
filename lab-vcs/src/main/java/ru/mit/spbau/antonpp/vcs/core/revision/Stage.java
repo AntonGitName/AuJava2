@@ -3,6 +3,7 @@ package ru.mit.spbau.antonpp.vcs.core.revision;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.*;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
@@ -27,10 +28,11 @@ import java.util.stream.Stream;
 @Slf4j
 public final class Stage extends AbstractCommit {
 
-    @Getter
-    @Setter
     @Nullable
-    private String branch;
+    private String revHash;
+
+    @Getter @Setter
+    @Nullable private String branch;
 
     /**
      * Resets file changes. If file is revisioned in HEAD, then it resets to this version. If it is only stage, then
@@ -40,6 +42,7 @@ public final class Stage extends AbstractCommit {
      * @throws ResetException if revisions could not be loaded or in you case you are trying to reset unrevisioned file.
      */
     public void reset(Path path) throws ResetException {
+        revHash = null;
         final Commit parentWithFile;
         try {
             parentWithFile = findParentWithFile(path);
@@ -58,7 +61,7 @@ public final class Stage extends AbstractCommit {
             }
             index.remove(path);
         } else {
-            log.debug("Reseting versioned file");
+            log.debug("Resetting versioned file");
             final String fileHash = parentWithFile.getFileHash(path);
             final Path stageLocation = Utils.getStageFiles(root).resolve(fileHash);
             try {
@@ -79,6 +82,7 @@ public final class Stage extends AbstractCommit {
      * @throws StageAddException wrapped IO exception.
      */
     public void addChanges(Path path) throws StageAddException {
+        revHash = null;
         try {
             removeIfExist(path);
             if (Files.exists(path)) {
@@ -119,7 +123,17 @@ public final class Stage extends AbstractCommit {
      * @throws CommitException if could not write data to the filesystem (wrapping exception to provide more details).
      */
     public String commit() throws CommitException {
-        final String commitHash = getRevHash();
+        val filesHash = getRevHash();
+        val commit = new Commit();
+        commit.generateSeed();
+        commit.setFilesHash(filesHash);
+        commit.setRoot(root);
+        commit.setParents(getParents());
+        val commitHash = commit.getRevHash();
+
+        if (Files.exists(Utils.getRevisionDir(root, commitHash))) {
+            throw new CommitException("Could not perform commit: revision with the same hash already exists");
+        }
 
         try {
             Files.createDirectories(Utils.getRevisionFiles(root, commitHash));
@@ -128,9 +142,7 @@ public final class Stage extends AbstractCommit {
         }
 
         final Set<Path> files = listFiles();
-        final Commit commit = new Commit();
-        commit.setRoot(root);
-        commit.setParents(getParents());
+
         for (final Path path : files) {
             final Commit parentWithThisFile;
             try {
@@ -154,8 +166,8 @@ public final class Stage extends AbstractCommit {
         } catch (SerializationException e) {
             throw new CommitException("Failed to save commit", e);
         }
-        setParents(Collections.singleton(getRevHash()));
-        return getRevHash();
+        setParents(Collections.singleton(commitHash));
+        return commitHash;
     }
 
     /**
@@ -221,6 +233,7 @@ public final class Stage extends AbstractCommit {
             Utils.serializePath(root, os);
             os.writeObject(parents);
             os.writeObject(branch);
+            os.writeObject(revHash);
             Utils.serializeMapWithPath(index, os, Path.class, Path.class);
         } catch (IOException e) {
             throw new SerializationException("Could not serialize revision", e);
@@ -233,6 +246,7 @@ public final class Stage extends AbstractCommit {
             root = Utils.deserializePath(os);
             parents = (Set<String>) os.readObject();
             branch = (String) os.readObject();
+            revHash = (String) os.readObject();
             index = Utils.deserializeMapWithPath(os, Path.class, Path.class);
         } catch (IOException | ClassNotFoundException e) {
             throw new SerializationException("Could not deserialize revision", e);
@@ -260,7 +274,8 @@ public final class Stage extends AbstractCommit {
      * @param revision revision to checkout.
      * @throws CheckoutException if could not copy files.
      */
-    public void checkoutRevision(Revision revision) throws CheckoutException {
+    public void checkoutRevision(Commit revision) throws CheckoutException {
+        revHash = null;
         try {
             for (final Path path : listFiles()) {
                 removeIfExist(path);
@@ -270,6 +285,7 @@ public final class Stage extends AbstractCommit {
                 copyFileFromRevision(revision, path);
             }
             setParents(Collections.singleton(revision.getRevHash()));
+            revHash = revision.getFilesHash();
             branch = null;
         } catch (IOException e) {
             throw new CheckoutException("Could not copy files", e);
@@ -290,6 +306,7 @@ public final class Stage extends AbstractCommit {
      * @see Stage#commit()
      */
     public String merge(AbstractCommit commitToMergeWith) throws MergeException {
+        revHash = null;
         final Set<Path> filesToMergeIn = commitToMergeWith.listFiles();
         try {
             for (final Path path : filesToMergeIn) {
@@ -301,7 +318,7 @@ public final class Stage extends AbstractCommit {
             throw new MergeException("Failed to copy new files", e);
         }
 
-        setParents(Stream.concat(getParents().stream(), commitToMergeWith.getParents().stream())
+        setParents(Stream.concat(getParents().stream(), Collections.singleton(commitToMergeWith.getRevHash()).stream())
                 .collect(Collectors.toSet()));
 
         try {
@@ -309,5 +326,13 @@ public final class Stage extends AbstractCommit {
         } catch (CommitException e) {
             throw new MergeException("Failed to commit merge", e);
         }
+    }
+
+    @Override
+    public String getRevHash() {
+        if (revHash == null) {
+            revHash = super.getRevHash();
+        }
+        return revHash;
     }
 }

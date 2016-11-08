@@ -2,8 +2,6 @@ package ru.mit.spbau.antonpp.vcs.cli.commands;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
 import ru.mit.spbau.antonpp.vcs.core.log.LogRecord;
 
@@ -13,10 +11,8 @@ import java.util.List;
  * @author Anton Mordberg
  * @since 23.10.16
  */
-@Parameters(commandNames = "getLogRecords", commandDescription = "Show vcs getLogRecords")
+@Parameters(commandNames = "log", commandDescription = "Show vcs log")
 public class CommandLog extends AbstractCommand {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(CommandLog.class);
 
     @Parameter(names = {"-m", "--messages"}, description = "print records with commit message")
     private boolean message;
@@ -36,8 +32,12 @@ public class CommandLog extends AbstractCommand {
         final List<LogRecord> logFileContent;
         try {
             logFileContent = repository.getLogRecords();
-            printHeader();
-            logFileContent.forEach(this::printLine);
+            if (logFileContent.isEmpty()) {
+                System.out.println("No records yet.");
+            } else {
+                printHeader();
+                logFileContent.forEach(this::printLine);
+            }
         } catch (SerializationException e) {
             exitWithError(e, "Failed to read getLogRecords.");
         }

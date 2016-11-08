@@ -16,11 +16,18 @@ task createTargetDir {
 
 task deploy {
     dependsOn jar, createTargetDir
+}
+
+deploy << {
     copy {
         from jar.archivePath
         into rootProject.targetDir
     }
-    println "Created jar in folder `$projectDir/$rootProject.targetDir`"
+    println "Created jar in folder `$projectDir$File.separator$rootProject.targetDir`"
+}
+
+clean.doFirst {
+    delete rootProject.targetDir
 }
 
 dependencies {

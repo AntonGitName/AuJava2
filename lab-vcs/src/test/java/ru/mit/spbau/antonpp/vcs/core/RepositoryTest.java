@@ -11,6 +11,7 @@ import ru.mit.spbau.antonpp.vcs.core.exceptions.CheckoutException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.ResetException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
 import ru.mit.spbau.antonpp.vcs.core.log.LogRecord;
+import ru.mit.spbau.antonpp.vcs.core.revision.Commit;
 import ru.mit.spbau.antonpp.vcs.core.revision.Stage;
 import ru.mit.spbau.antonpp.vcs.core.status.FileStatus;
 import ru.mit.spbau.antonpp.vcs.core.status.Status;
@@ -320,8 +321,10 @@ public class RepositoryTest {
     public void testLog() throws Exception {
         final Path newFile = testDir.resolve("123.txt");
         createFile("123", newFile);
+        repository.addChanges(newFile);
         repository.commit(new LogRecord());
         Files.delete(newFile);
+        repository.addChanges(newFile);
         repository.commit(new LogRecord());
         assertEquals(2, repository.getLogRecords().size());
 
@@ -506,5 +509,42 @@ public class RepositoryTest {
         repository.checkout(newBranch);
         assertEquals(newBranchHash, repository.getHeadHash());
         assertEquals("versioned_modified", Utils.getFileContent(versioned));
+    }
+
+    @Test
+    public void testCheckout() throws Exception {
+        repository.addBranch("b1");
+        final Path versioned = testDir.resolve("versioned.txt");
+        createFile("versioned", versioned);
+        repository.addChanges(versioned);
+        repository.commit(new LogRecord());
+        repository.addBranch("b2");
+        final Path versioned2 = testDir.resolve("versioned2.txt");
+        createFile("versioned2", versioned2);
+        repository.addChanges(versioned2);
+        repository.commit(new LogRecord());
+        repository.checkout("b1");
+        assertEquals("b1", repository.loadStage().getBranch());
+    }
+
+    @Test
+    public void testCustomUsage() throws Exception {
+        final Path versionedOnMaster = testDir.resolve("versionedOnMaster.txt");
+        createFile("versionedOnMaster", versionedOnMaster);
+        repository.addChanges(versionedOnMaster);
+        repository.commit(new LogRecord());
+        String branch = "b1";
+        repository.addBranch(branch);
+        final Path versionedOnOtherBranch = testDir.resolve("versionedOnOtherBranch.txt");
+        createFile("versionedOnOtherBranch", versionedOnOtherBranch);
+        repository.addChanges(versionedOnOtherBranch);
+        repository.commit(new LogRecord());
+        repository.checkout("master");
+        repository.merge(branch, new LogRecord());
+        Commit head = repository.loadHead();
+        assertEquals("master", repository.loadStage().getBranch());
+        assertEquals(2, head.getParents().size());
+        assertTrue(head.checkFileInRevision(versionedOnMaster));
+        assertTrue(head.checkFileInRevision(versionedOnOtherBranch));
     }
 }

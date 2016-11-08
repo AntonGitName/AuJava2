@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Class that manages repository branches.
@@ -88,5 +89,14 @@ public class BranchResolver implements FileSerializable {
      */
     public boolean hasBranch(String branch) {
         return resolver.containsKey(branch);
+    }
+
+    /**
+     * Returns set of all branches known to resolver.
+     *
+     * @return set of names.
+     */
+    public Set<String> getAllBranches() {
+        return resolver.keySet();
     }
 }

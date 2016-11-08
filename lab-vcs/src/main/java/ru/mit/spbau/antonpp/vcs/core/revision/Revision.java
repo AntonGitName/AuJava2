@@ -1,7 +1,10 @@
 package ru.mit.spbau.antonpp.vcs.core.revision;
 
 import com.google.common.hash.Hashing;
+import lombok.val;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.Set;
@@ -17,6 +20,8 @@ import java.util.stream.Collectors;
  * @see WorkingDir
  */
 public interface Revision {
+
+    Logger LOGGER = LoggerFactory.getLogger(Revision.class);
 
     /**
      * Calculate md5 hash of file that exists in a revision.
@@ -73,7 +78,9 @@ public interface Revision {
      */
     default String getRevHash() {
         final String joinedHash = listFiles().stream().sorted().map(this::getFileHash).collect(Collectors.joining());
-        return Hashing.md5().hashString(joinedHash).toString();
+        val hash = Hashing.md5().hashString(joinedHash).toString();
+        LOGGER.debug("Calculated hash for revision {} via default implementation", hash);
+        return hash;
     }
 
 }
