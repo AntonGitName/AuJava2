@@ -5,6 +5,7 @@ import com.beust.jcommander.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.BranchException;
+import ru.mit.spbau.antonpp.vcs.core.exceptions.CommitException;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
 
 import java.util.List;
@@ -45,7 +46,7 @@ public class CommandBranch extends AbstractCommand {
                 } else {
                     repository.addBranch(branch);
                 }
-            } catch (SerializationException | BranchException e) {
+            } catch (SerializationException | BranchException | CommitException e) {
                 exitWithError(e, e.getMessage());
 
             }

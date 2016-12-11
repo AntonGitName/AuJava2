@@ -126,6 +126,7 @@ public final class Stage extends AbstractCommit {
         val filesHash = getRevHash();
         val commit = new Commit();
         commit.generateSeed();
+        commit.setBranch(branch);
         commit.setFilesHash(filesHash);
         commit.setRoot(root);
         commit.setParents(getParents());

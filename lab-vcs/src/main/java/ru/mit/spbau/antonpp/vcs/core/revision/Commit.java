@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import ru.mit.spbau.antonpp.vcs.core.exceptions.SerializationException;
 import ru.mit.spbau.antonpp.vcs.core.utils.Utils;
 
@@ -32,20 +33,13 @@ public final class Commit extends AbstractCommit {
 
     private int seed;
 
+    @Nullable
+    @Getter
+    @Setter
+    private String branch;
+
     @Getter @Setter
     private String filesHash;
-
-    public void generateSeed() {
-        if (seed != 0) {
-            throw new IllegalStateException("generateSeed must be called only once.");
-        }
-        seed = 1 + RND.nextInt();
-    }
-
-    private static String getCommitHash(String filesHash, int seed) {
-        return Hashing.md5().hashString(filesHash + seed).toString();
-    }
-
     @Getter(lazy = true)
     @NotNull
     private final String revHash = calcRevHash();
@@ -53,9 +47,22 @@ public final class Commit extends AbstractCommit {
     public Commit() {
     }
 
+    private static String getCommitHash(@Nullable String branch, String filesHash, int seed) {
+        return Hashing.md5().hashString(branch + filesHash + seed).toString();
+    }
+
+
+    void generateSeed() {
+        if (seed != 0) {
+            throw new IllegalStateException("generateSeed must be called only once.");
+        }
+        seed = 1 + RND.nextInt();
+    }
+
     @Override
     public void deserialize(Path path) throws SerializationException {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(path.toFile()))) {
+            branch = (String) os.readObject();
             filesHash = (String) os.readObject();
             seed = os.readInt();
             root = Paths.get((String) os.readObject());
@@ -69,6 +76,7 @@ public final class Commit extends AbstractCommit {
     @Override
     public void serialize(Path path) throws SerializationException {
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(path.toFile()))) {
+            os.writeObject(branch);
             os.writeObject(filesHash);
             os.writeInt(seed);
             os.writeObject(root.toString());
@@ -86,6 +94,6 @@ public final class Commit extends AbstractCommit {
      */
     @NotNull
     private String calcRevHash() {
-        return getCommitHash(filesHash, seed);
+        return getCommitHash(branch, filesHash, seed);
     }
 }

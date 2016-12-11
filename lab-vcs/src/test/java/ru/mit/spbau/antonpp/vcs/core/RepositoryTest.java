@@ -547,4 +547,19 @@ public class RepositoryTest {
         assertTrue(head.checkFileInRevision(versionedOnMaster));
         assertTrue(head.checkFileInRevision(versionedOnOtherBranch));
     }
+
+    @Test
+    public void testCheckoutAfterAddBranch() throws Exception {
+        final Path versionedOnMaster = testDir.resolve("versionedOnMaster.txt");
+        createFile("versionedOnMaster", versionedOnMaster);
+        repository.addChanges(versionedOnMaster);
+        repository.commit(new LogRecord());
+        String branch = "b1";
+        repository.addBranch(branch);
+        repository.checkout("master");
+        repository.checkout(branch);
+        Commit head = repository.loadHead();
+        assertEquals(branch, repository.loadStage().getBranch());
+        assertTrue(head.checkFileInRevision(versionedOnMaster));
+    }
 }

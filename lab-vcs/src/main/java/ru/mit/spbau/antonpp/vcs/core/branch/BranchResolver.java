@@ -57,8 +57,9 @@ public class BranchResolver implements FileSerializable {
      */
     @Nullable
     public String findCommitBranch(String commitHash) {
-        final Optional<String> branch = resolver.entrySet().stream().filter(x -> x.getValue().equals(commitHash))
-                .map(Map.Entry::getKey).findFirst();
+        final Optional<String> branch = resolver.entrySet().stream()
+                .filter(x -> x.getValue().equals(commitHash))
+                .map(Map.Entry::getKey).findAny();
         return branch.isPresent() ? branch.get() : null;
     }
 

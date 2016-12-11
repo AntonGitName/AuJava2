@@ -197,7 +197,7 @@ public class Repository implements FileSerializable {
         final String commitHash = stage.commit();
         headHash = commitHash;
         if (stage.getBranch() != null) {
-            final BranchResolver branchResolver = loadBranchResolver();
+            val branchResolver = loadBranchResolver();
             branchResolver.updateBranch(stage.getBranch(), commitHash);
             saveBranchResolver(branchResolver);
         }
@@ -439,9 +439,10 @@ public class Repository implements FileSerializable {
      * @param branch branch name.
      * @throws SerializationException if internal files could not be overwritten for some mysterious reason.
      * @throws BranchException if branch with this name already exists or stage has uncommited changes and a branch
+     * @throws CommitException if internal files could not be overwritten for some io reasons.
      * name.
      */
-    public void addBranch(String branch) throws SerializationException, BranchException {
+    public void addBranch(String branch) throws SerializationException, BranchException, CommitException {
         final Stage stage = loadStage();
         final Commit head = loadHead();
         final BranchResolver branchResolver = loadBranchResolver();
@@ -455,6 +456,7 @@ public class Repository implements FileSerializable {
 
         stage.setBranch(branch);
         saveStage(stage);
+        headHash = stage.commit();
     }
 
     /**
@@ -480,6 +482,11 @@ public class Repository implements FileSerializable {
         Commit head = loadHead();
         if (!isStageClear(stage, head)) {
             throw new CheckoutException("You must commit changes before checkout");
+        }
+        if (stage.getBranch() != null) {
+            val branchResolver = loadBranchResolver();
+            branchResolver.updateBranch(stage.getBranch(), head.getRevHash());
+            saveBranchResolver(branchResolver);
         }
         val fullHash = findCommitByHashOrBranch(revName);
         setHeadHash(fullHash);

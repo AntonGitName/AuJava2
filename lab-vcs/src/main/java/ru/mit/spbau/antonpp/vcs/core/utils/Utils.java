@@ -31,7 +31,7 @@ public class Utils {
     }
 
     public static List<Path> listFilesRecursivelyExceptInternls(Path root) {
-        return listFilesRecursively(root, Collections.singletonList(getInternals(root)));
+        return listFilesRecursively(root, Arrays.asList(getInternals(root), getAppLog(root), getAppJar(root)));
     }
 
     private static List<Path> listFilesRecursively(Path dir, List<Path> exclusions) {
@@ -48,7 +48,7 @@ public class Utils {
 
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                if (attrs.isRegularFile() && !attrs.isDirectory()) {
+                if (attrs.isRegularFile() && !attrs.isDirectory() && !exclusions.contains(file)) {
                     result.add(file);
                 }
                 return FileVisitResult.CONTINUE;
@@ -88,6 +88,14 @@ public class Utils {
         return root.resolve(Constants.GLOBAL_INTERNALS);
     }
 
+    private static Path getAppLog(Path root) {
+        return root.resolve(Constants.GLOBAL_APP_LOG);
+    }
+
+    private static Path getAppJar(Path root) {
+        return root.resolve(Constants.GLOBAL_APP_JAR);
+    }
+
     public static Path getRepository(Path root) {
         return getInternals(root).resolve(Constants.GLOBAL_REPOSITORY);
     }
@@ -112,7 +120,7 @@ public class Utils {
         return getRevisionDir(root, hash).resolve(Constants.REV_FILES);
     }
 
-    public static Path getStageDir(Path root) {
+    private static Path getStageDir(Path root) {
         return getInternals(root).resolve(Constants.STAGE);
     }
 

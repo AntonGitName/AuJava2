@@ -14,16 +14,12 @@ task createTargetDir {
     mkdir rootProject.targetDir
 }
 
-task deploy {
-    dependsOn jar, createTargetDir
-}
-
-deploy << {
-    copy {
-        from jar.archivePath
-        into rootProject.targetDir
-    }
-    println "Created jar in folder `$projectDir$File.separator$rootProject.targetDir`"
+task deploy(dependsOn: jar, type: Copy) {
+    mkdir rootProject.targetDir
+    from jar.archivePath
+    into rootProject.targetDir
+    rename "$project.name(.*)jar", "$project.name" + '.jar'
+    println "Created jar `$projectDir$File.separator$rootProject.targetDir$File.separator$project.name" + ".jar`"
 }
 
 clean.doFirst {
