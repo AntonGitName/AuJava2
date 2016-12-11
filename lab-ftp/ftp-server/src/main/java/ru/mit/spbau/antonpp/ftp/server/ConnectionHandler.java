@@ -92,7 +92,7 @@ public class ConnectionHandler implements Runnable {
         if (!Files.exists(path) || !Files.isDirectory(path)) {
             dos.writeInt(0);
         } else {
-            val files = Files.list(path).collect(Collectors.toList());
+            val files = Files.list(path).sorted().collect(Collectors.toList());
             dos.writeInt(files.size());
             for (Path p : files) {
                 dos.writeUTF(p.getFileName().toString());

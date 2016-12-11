@@ -15,4 +15,9 @@ dependencies {
     compile group: 'com.beust', name: 'jcommander', version: '1.48'
     // lombok annotations
     compileOnly "org.projectlombok:lombok:1.16.10"
+
+    // mock
+    testCompile "org.mockito:mockito-core:2.0.57-beta"
+
+
 }
