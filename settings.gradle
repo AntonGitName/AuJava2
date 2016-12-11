@@ -1,3 +1,4 @@
 rootProject.name = 'AuJava2'
-include 'lab-torrent'
+
+include 'lab-torrent:torrent-protocol', 'lab-torrent:torrent-client', 'lab-torrent:torrent-server'
 

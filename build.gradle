@@ -25,3 +25,14 @@ subprojects {
     }
 }
 
+project(':lab-torrent:torrent-client') {
+    dependencies {
+        compile project(':lab-torrent:torrent-protocol')
+    }
+}
+
+project(':lab-torrent:torrent-server') {
+    dependencies {
+        compile project(':lab-torrent:torrent-protocol')
+    }
+}
