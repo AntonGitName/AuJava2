@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.ClientConnectionException;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
-import ru.mit.spbau.antonpp.torrent.protocol.TrackerRequestCode;
+import ru.mit.spbau.antonpp.torrent.protocol.protocol.TrackerRequestCode;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -18,12 +18,12 @@ import java.net.Socket;
 @Slf4j
 public class ClientStatusUpdater implements Runnable {
     private final String host;
-    private final int trackerPort;
-    private final int clientPort;
+    private final short trackerPort;
+    private final short clientPort;
     private final ClientFileManager fileManager;
 
 
-    public ClientStatusUpdater(String host, int trackerPort, ClientFileManager fileManager, int clientPort) {
+    public ClientStatusUpdater(String host, short trackerPort, ClientFileManager fileManager, short clientPort) {
         this.host = host;
         this.trackerPort = trackerPort;
         this.fileManager = fileManager;
@@ -40,7 +40,7 @@ public class ClientStatusUpdater implements Runnable {
             log.debug("connected");
 
             outputStream.writeInt(TrackerRequestCode.RQ_UPDATE);
-            outputStream.writeInt(clientPort);
+            outputStream.writeShort(clientPort);
 
             val availableFiles = fileManager.getAvailableFiles();
             outputStream.writeInt(availableFiles.size());

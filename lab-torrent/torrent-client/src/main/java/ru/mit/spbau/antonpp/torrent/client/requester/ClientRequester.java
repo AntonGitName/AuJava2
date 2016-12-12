@@ -1,15 +1,14 @@
 package ru.mit.spbau.antonpp.torrent.client.requester;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import ru.mit.spbau.antonpp.torrent.client.exceptions.ClientConnectionException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
-import ru.mit.spbau.antonpp.torrent.protocol.ClientRequestCode;
-import ru.mit.spbau.antonpp.torrent.protocol.TrackerRequestCode;
+import ru.mit.spbau.antonpp.torrent.protocol.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.protocol.data.SeedRecord;
+import ru.mit.spbau.antonpp.torrent.protocol.network.ConnectionException;
+import ru.mit.spbau.antonpp.torrent.protocol.protocol.ClientRequestCode;
+import ru.mit.spbau.antonpp.torrent.protocol.protocol.TrackerRequestCode;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -17,7 +16,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import static ru.mit.spbau.antonpp.torrent.client.TorrentClient.MAX_THREADS;
 
@@ -36,16 +34,16 @@ public class ClientRequester {
         this.trackerPort = trackerPort;
     }
 
-    public List<FileRecord> requestFilesList() throws RequestFailedException {
-        return new AbstractRequester<List<FileRecord>>(host, trackerPort) {
+    public Map<Integer, FileRecord> requestFilesList() throws RequestFailedException {
+        return new AbstractRequester<Map<Integer, FileRecord>>(host, trackerPort) {
 
             @Override
-            protected List<FileRecord> execute(DataInputStream inputStream, DataOutputStream outputStream) throws IOException {
-                val result = new ArrayList<FileRecord>();
+            protected Map<Integer, FileRecord> execute(DataInputStream inputStream, DataOutputStream outputStream) throws IOException {
+                val result = new HashMap<Integer, FileRecord>();
                 val numFiles = inputStream.readInt();
                 for (int i = 0; i < numFiles; ++i) {
-                    result.add(FileRecord.builder()
-                            .id(inputStream.readInt())
+                    val id = inputStream.readInt();
+                    result.put(id, FileRecord.builder()
                             .name(inputStream.readUTF())
                             .size(inputStream.readLong())
                             .build());
@@ -68,42 +66,59 @@ public class ClientRequester {
         }.request();
     }
 
-    public void requestDownloadFileAsync(int id, ClientFileManager fileManager) throws RequestFailedException {
-        val fileSize = requestFilesList().stream().filter(x -> x.getId() == id).findAny()
-                .map(FileRecord::getSize).orElse(0L);
+    private List<SeedRecord> requestSources(int id) throws RequestFailedException {
+        return new AbstractRequester<List<SeedRecord>>(host, trackerPort) {
 
-        while (fileSize > fileManager.getSize(id)) {
-            val sources = new AbstractRequester<List<SeedRecord>>(host, trackerPort) {
-
-                @Override
-                protected List<SeedRecord> execute(DataInputStream inputStream, DataOutputStream outputStream) throws IOException {
-                    outputStream.writeInt(TrackerRequestCode.RQ_SOURCES);
-                    outputStream.writeInt(id);
-                    val result = new ArrayList<SeedRecord>();
-                    val numFiles = inputStream.readInt();
-                    val ip = new byte[4];
-                    for (int i = 0; i < numFiles; ++i) {
-                        ip[0] = inputStream.readByte();
-                        ip[1] = inputStream.readByte();
-                        ip[2] = inputStream.readByte();
-                        ip[3] = inputStream.readByte();
-                        result.add(SeedRecord.builder()
-                                .ip(ip)
-                                .port(inputStream.readInt())
-                                .build());
-                    }
-                    return result;
+            @Override
+            protected List<SeedRecord> execute(DataInputStream inputStream, DataOutputStream outputStream) throws IOException {
+                outputStream.writeInt(TrackerRequestCode.RQ_SOURCES);
+                outputStream.writeInt(id);
+                val result = new ArrayList<SeedRecord>();
+                val numFiles = inputStream.readInt();
+                val ip = new byte[4];
+                for (int i = 0; i < numFiles; ++i) {
+                    ip[0] = inputStream.readByte();
+                    ip[1] = inputStream.readByte();
+                    ip[2] = inputStream.readByte();
+                    ip[3] = inputStream.readByte();
+                    result.add(SeedRecord.builder()
+                            .ip(ip)
+                            .port(inputStream.readShort())
+                            .build());
                 }
-            }.request();
-
-            val alreadyHave = fileManager.getAvailableParts(id);
-            try {
-                val sourcesMap = getSourcesMap(id, alreadyHave, sources);
-                downloadParts(id, sourcesMap, fileManager);
-            } catch (InterruptedException e) {
-                throw new RequestFailedException(e);
+                return result;
             }
-        }
+        }.request();
+    }
+
+    public void requestDownloadFileAsync(int id, ClientFileManager fileManager, DownloadFileCallback callback) {
+
+        val executor = Executors.newSingleThreadExecutor();
+
+        executor.execute(() -> {
+            final Map<Integer, FileRecord> fileRecords;
+            try {
+                fileRecords = requestFilesList();
+            } catch (RequestFailedException e) {
+                callback.onFail(id, e);
+                return;
+            }
+            val fileSize = fileRecords.entrySet().stream().filter(x -> x.getKey() == id).findAny()
+                    .map(Map.Entry::getValue).map(FileRecord::getSize).orElse(0L);
+
+            while (fileSize > fileManager.getSize(id)) {
+                val alreadyHave = fileManager.getAvailableParts(id);
+                try {
+                    val sources = requestSources(id);
+                    val sourcesMap = getSourcesMap(id, alreadyHave, sources);
+                    downloadParts(id, sourcesMap, fileManager);
+                } catch (RequestFailedException e) {
+                    callback.onFail(id, e);
+                }
+            }
+            callback.onFinish(id);
+        });
+        executor.shutdown();
     }
 
     private byte[] requestFilePart(int id, int part, SeedRecord seed) throws RequestFailedException {
@@ -127,8 +142,7 @@ public class ClientRequester {
         }.request();
     }
 
-    private void downloadParts(int id, Map<Integer, SeedRecord> sourcesMap, ClientFileManager fileManager)
-            throws InterruptedException {
+    private void downloadParts(int id, Map<Integer, SeedRecord> sourcesMap, ClientFileManager fileManager) {
         val executor = Executors.newFixedThreadPool(MAX_THREADS);
         sourcesMap.entrySet().forEach(x -> {
             val part = x.getKey();
@@ -142,7 +156,6 @@ public class ClientRequester {
                 }
             });
         });
-        executor.awaitTermination(2, TimeUnit.MINUTES);
         executor.shutdown();
     }
 
@@ -162,8 +175,7 @@ public class ClientRequester {
         }.request();
     }
 
-    private Map<Integer, SeedRecord> getSourcesMap(int id, Set<Integer> notNeededParts, List<SeedRecord> seeds)
-            throws InterruptedException {
+    private Map<Integer, SeedRecord> getSourcesMap(int id, Set<Integer> notNeededParts, List<SeedRecord> seeds) {
         val sourcesMap = new ConcurrentHashMap<Integer, SeedRecord>();
         val executor = Executors.newFixedThreadPool(MAX_THREADS);
         seeds.forEach(seed -> {
@@ -174,34 +186,18 @@ public class ClientRequester {
                     availableParts.forEach(x -> {
                         sourcesMap.putIfAbsent(x, seed);
                     });
-                } catch (RequestFailedException | ClientConnectionException e) {
+                } catch (RequestFailedException | ConnectionException e) {
                     log.error("Connection to {} failed. Ignoring it.", seed, e);
                 }
             });
         });
-        executor.awaitTermination(2, TimeUnit.MINUTES);
         executor.shutdown();
         return sourcesMap;
     }
 
+    public interface DownloadFileCallback {
+        void onFinish(int id);
 
-    @ToString
-    @Builder
-    private static final class SeedRecord {
-        @Getter
-        private final byte[] ip;
-        @Getter
-        private final int port;
-    }
-
-
-    @Builder
-    public static final class FileRecord {
-        @Getter
-        private final String name;
-        @Getter
-        private final int id;
-        @Getter
-        private final long size;
+        void onFail(int id, Throwable e);
     }
 }

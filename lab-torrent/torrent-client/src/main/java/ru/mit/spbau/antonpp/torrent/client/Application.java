@@ -4,12 +4,16 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.TorrentClientException;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
+import ru.mit.spbau.antonpp.torrent.client.requester.ClientRequester;
+import ru.mit.spbau.antonpp.torrent.protocol.data.FileRecord;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Scanner;
 
 /**
@@ -28,14 +32,14 @@ public class Application {
     private final JCommander jc;
     private TorrentClient torrentClient;
 
-    @Parameter(names = {"--host", "-h"})
+    @Parameter(names = {"--host"})
     private String host = "localhost";
 
     @Parameter(names = {"--client_port", "-p"})
-    private int clientPort = 10001;
+    private short clientPort = 10001;
 
     @Parameter(names = {"--server_port"})
-    private int serverPort = 8081;
+    private short serverPort = 8081;
 
     @Parameter(names = {"-h", "--help"}, description = "Print this help message and exit", help = true)
     private boolean help;
@@ -77,6 +81,11 @@ public class Application {
         new Application(args);
     }
 
+    private static void printToLogAndSout(String msg, Throwable e) {
+        log.error(msg, e);
+        System.out.println(msg);
+    }
+
     private void run() {
 
         try {
@@ -109,11 +118,14 @@ public class Application {
                     case CMD_EXIT:
                         System.out.println("Bye!");
                         return;
+                    case CMD_LIST:
+                        handleListFiles();
+                        break;
                     case CMD_UPLOAD:
-                        // TODO
+                        handleUploadFile(split);
                         break;
                     case CMD_DOWNLOAD:
-                        // TODO
+                        handleDownloadFile(split);
                         break;
                     case CMD_HELP:
                     default:
@@ -122,6 +134,49 @@ public class Application {
                 }
             }
         }
+    }
+
+    private void handleListFiles() {
+        final Map<Integer, FileRecord> records;
+        final String fmt = "%20s\t%6d\t%d\n";
+        try {
+            records = torrentClient.requestFilesList();
+        } catch (RequestFailedException e) {
+            printToLogAndSout("Failed to request list of files", e);
+            return;
+        }
+        System.out.printf("%20s\t%6s\t%s\n", "Filename", "ID", "Size");
+        records.forEach((id, record) ->
+                System.out.printf(fmt, record.getName(), id, record.getSize())
+        );
+    }
+
+    private void handleUploadFile(String[] args) {
+        final int id;
+        final String pathToFile = args[1];
+        try {
+            id = torrentClient.requestUploadFile(pathToFile);
+        } catch (RequestFailedException e) {
+            printToLogAndSout("Failed to request list of files", e);
+            return;
+        }
+        System.out.printf("`%s` was uploaded with id %d\n", pathToFile, id);
+    }
+
+    private void handleDownloadFile(String[] args) {
+        val id = Integer.valueOf(args[1]);
+        torrentClient.requestDownloadFileAsync(id, new ClientRequester.DownloadFileCallback() {
+            @Override
+            public void onFinish(int id) {
+                System.out.printf("Download if file with id=%d has finished\n", id);
+            }
+
+            @Override
+            public void onFail(int id, Throwable e) {
+                printToLogAndSout(String.format("Download if file with id=%d has failed\n", id), e);
+            }
+        });
+
     }
 
     private ClientFileManager loadClientFiles() throws IOException {
@@ -136,10 +191,5 @@ public class Application {
             fileManager.serialize(path);
         }
         return fileManager;
-    }
-
-    private void printToLogAndSout(String msg, Exception e) {
-        log.error(msg, e);
-        System.out.println(msg);
     }
 }

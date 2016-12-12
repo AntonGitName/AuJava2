@@ -27,12 +27,12 @@ subprojects {
 
 project(':lab-torrent:torrent-client') {
     dependencies {
-        compile project(':lab-torrent:torrent-protocol')
+        compile project(':lab-torrent:torrent-commons')
     }
 }
 
-project(':lab-torrent:torrent-server') {
+project(':lab-torrent:torrent-tracker') {
     dependencies {
-        compile project(':lab-torrent:torrent-protocol')
+        compile project(':lab-torrent:torrent-commons')
     }
 }

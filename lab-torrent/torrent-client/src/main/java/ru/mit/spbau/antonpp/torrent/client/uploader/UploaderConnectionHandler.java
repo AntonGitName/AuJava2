@@ -5,8 +5,8 @@ import lombok.val;
 import org.jetbrains.annotations.NotNull;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.ClientConnectionException;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
-import ru.mit.spbau.antonpp.torrent.client.handler.AbstractConnectionHandler;
-import ru.mit.spbau.antonpp.torrent.protocol.ClientRequestCode;
+import ru.mit.spbau.antonpp.torrent.protocol.network.AbstractConnectionHandler;
+import ru.mit.spbau.antonpp.torrent.protocol.protocol.ClientRequestCode;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -21,8 +21,12 @@ import java.net.SocketTimeoutException;
 @Slf4j
 public class UploaderConnectionHandler extends AbstractConnectionHandler {
 
+    @NotNull
+    private final ClientFileManager fileManager;
+
     public UploaderConnectionHandler(Socket clientSocket, @NotNull ClientFileManager fileManager) {
-        super(clientSocket, fileManager);
+        super(clientSocket);
+        this.fileManager = fileManager;
     }
 
     protected void handle(DataInputStream dis, DataOutputStream dos) {

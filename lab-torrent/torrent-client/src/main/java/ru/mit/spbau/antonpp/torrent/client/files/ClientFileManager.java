@@ -1,7 +1,8 @@
 package ru.mit.spbau.antonpp.torrent.client.files;
 
 import lombok.val;
-import ru.mit.spbau.antonpp.torrent.client.exceptions.SerializationException;
+import ru.mit.spbau.antonpp.torrent.protocol.serialization.FileSerializable;
+import ru.mit.spbau.antonpp.torrent.protocol.serialization.SerializationException;
 
 import java.io.*;
 import java.nio.file.NoSuchFileException;
@@ -32,8 +33,9 @@ public class ClientFileManager implements FileSerializable {
     public byte[] getFilePart(int id, int part) throws IOException {
         if (pathsToFiles.containsKey(id)) {
             FileHolder holder = new FileHolder();
-            holder.deserialize(Paths.get(pathsToFiles.get(id)));
-            return holder.getPart(part);
+            final String pathToFolder = pathsToFiles.get(id);
+            holder.deserialize(Paths.get(pathToFolder));
+            return holder.getPart(pathToFolder, part);
         }
         throw new NoSuchFileException("" + id);
     }
@@ -53,11 +55,12 @@ public class ClientFileManager implements FileSerializable {
 
     public void updateFilePart(int id, int part, byte[] data) throws IOException {
         FileHolder holder = new FileHolder();
-        val path = Paths.get(pathsToFiles.get(id));
+        final String pathToFolder = pathsToFiles.get(id);
+        val path = Paths.get(pathToFolder);
         if (pathsToFiles.containsKey(id)) {
             holder.deserialize(path);
         }
-        holder.addPart(part, data);
+        holder.addPart(part, data, pathToFolder);
         holder.serialize(path);
     }
 
