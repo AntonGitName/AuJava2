@@ -1,6 +1,5 @@
 package ru.mit.spbau.antonpp.torrent.tracker.handler;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
@@ -12,6 +11,7 @@ import ru.mit.spbau.antonpp.torrent.tracker.TorrentTracker;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -39,7 +39,7 @@ public class TrackerPortListener extends AbstractPortListener {
     }
 
     @Override
-    protected void handleNewConnection(Socket clientSocket, ListeningExecutorService executor) {
+    protected void handleNewConnection(Socket clientSocket, ExecutorService executor) {
         executor.submit(new TrackerConnectionHandler(clientSocket, availableFiles, activeClients, freeId));
     }
 

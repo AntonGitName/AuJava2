@@ -48,7 +48,7 @@ public class ClientStatusUpdater implements Runnable {
                     }
 
                     val status = inputStream.readBoolean();
-                    log.info("Client send update to tracker, status: {}", status);
+                    log.info("Client send update to tracker, response: {}", status);
 
                     return status;
                 }

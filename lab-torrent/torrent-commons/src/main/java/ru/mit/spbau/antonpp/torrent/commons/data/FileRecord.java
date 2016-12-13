@@ -11,7 +11,8 @@ import java.io.Serializable;
  */
 @Data
 @Builder
-public final class FileRecord implements Serializable {
-    private String name;
-    private long size;
+public class FileRecord implements Serializable {
+    private final String name;
+    private final int id;
+    private final long size;
 }

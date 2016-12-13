@@ -2,7 +2,6 @@ package ru.mit.spbau.antonpp.torrent.client.requests;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import ru.mit.spbau.antonpp.torrent.client.exceptions.ClientConnectionException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
 
@@ -42,12 +41,14 @@ public abstract class AbstractRequester<T> {
 
     protected abstract T execute(DataInputStream inputStream, DataOutputStream outputStream) throws IOException;
 
-    T request() throws ClientConnectionException {
+    T request() throws RequestFailedException {
         final T result;
         try {
             val clientSocket = new Socket(address, trackerPort);
             val inputStream = new DataInputStream(clientSocket.getInputStream());
             val outputStream = new DataOutputStream(clientSocket.getOutputStream());
+
+            clientSocket.setSoTimeout(10000);
 
             log.debug("connected");
 
@@ -59,7 +60,8 @@ public abstract class AbstractRequester<T> {
             clientSocket.close();
             log.debug("disconnected");
         } catch (IOException e) {
-            throw new ClientConnectionException("Could not connect to specified host", e);
+            final String msg = String.format("Could not connect to specified host(%s : %s)", address, trackerPort);
+            throw new RequestFailedException(msg, e);
         }
         return result;
     }

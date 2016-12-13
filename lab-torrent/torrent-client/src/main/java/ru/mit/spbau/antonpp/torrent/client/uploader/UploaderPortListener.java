@@ -1,6 +1,5 @@
 package ru.mit.spbau.antonpp.torrent.client.uploader;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import ru.mit.spbau.antonpp.torrent.client.TorrentClient;
@@ -9,6 +8,7 @@ import ru.mit.spbau.antonpp.torrent.commons.network.AbstractPortListener;
 
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
 
 /**
  * @author Anton Mordberg
@@ -27,7 +27,7 @@ public class UploaderPortListener extends AbstractPortListener {
 
 
     @Override
-    protected void handleNewConnection(Socket clientSocket, ListeningExecutorService executor) {
+    protected void handleNewConnection(Socket clientSocket, ExecutorService executor) {
         executor.submit(new UploaderConnectionHandler(clientSocket, fileManager));
     }
 

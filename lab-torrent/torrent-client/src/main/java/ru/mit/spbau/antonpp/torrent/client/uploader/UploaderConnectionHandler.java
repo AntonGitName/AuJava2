@@ -3,9 +3,9 @@ package ru.mit.spbau.antonpp.torrent.client.uploader;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
-import ru.mit.spbau.antonpp.torrent.client.exceptions.ClientConnectionException;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
 import ru.mit.spbau.antonpp.torrent.commons.network.AbstractConnectionHandler;
+import ru.mit.spbau.antonpp.torrent.commons.network.ConnectionIOException;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.ClientRequestCode;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
 
@@ -13,7 +13,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
 
 /**
  * @author Anton Mordberg
@@ -53,13 +52,11 @@ public class UploaderConnectionHandler extends AbstractConnectionHandler {
                     disconnect();
                     break;
                 default:
-                    throw new ClientConnectionException("Unknown command");
+                    throw new ConnectionIOException("Unknown command");
             }
             log.debug("Request handled");
-        } catch (SocketTimeoutException e) {
-            log.debug("Socket read time limit exceeded", e);
         } catch (IOException e) {
-            throw new ClientConnectionException("Failed to handle request", e);
+            throw new ConnectionIOException("Failed to handle request", e);
         }
     }
 

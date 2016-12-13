@@ -7,17 +7,16 @@ import ru.mit.spbau.antonpp.torrent.commons.Util;
 import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
 import ru.mit.spbau.antonpp.torrent.commons.network.AbstractConnectionHandler;
+import ru.mit.spbau.antonpp.torrent.commons.network.ConnectionIOException;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.TrackerRequestCode;
 import ru.mit.spbau.antonpp.torrent.tracker.ClientRecord;
-import ru.mit.spbau.antonpp.torrent.tracker.exceptions.TrackerConnectionException;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -82,13 +81,11 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
                     disconnect();
                     break;
                 default:
-                    throw new TrackerConnectionException("Unknown command");
+                    throw new ConnectionIOException("Unknown command");
             }
             log.debug("Request handled");
-        } catch (SocketTimeoutException e) {
-            log.debug("Socket read time limit exceeded", e);
         } catch (IOException e) {
-            throw new TrackerConnectionException("Failed to handle request", e);
+            throw new ConnectionIOException("Failed to handle request", e);
         }
     }
 
@@ -130,9 +127,9 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
         val name = dis.readUTF();
         val size = dis.readLong();
         log.debug("received request: UPLOAD {} {}", name, size);
-        final FileRecord fileRecord = FileRecord.builder().name(name).size(size).build();
         while (true) {
             val id = freeId.getAndIncrement();
+            final FileRecord fileRecord = FileRecord.builder().name(name).size(size).id(id).build();
             if (availableFiles.putIfAbsent(id, fileRecord) == null) {
                 dos.writeInt(id);
                 break;

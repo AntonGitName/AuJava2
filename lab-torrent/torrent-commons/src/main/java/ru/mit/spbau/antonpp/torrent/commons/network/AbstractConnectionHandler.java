@@ -36,7 +36,7 @@ public abstract class AbstractConnectionHandler implements Runnable {
                 handle(requestCode, dis, dos);
             }
         } catch (IOException e) {
-            throw new ConnectionException("Could not open I/O streams", e);
+            throw new ConnectionIOException("Could not open I/O streams", e);
         } finally {
             onDisconnected();
         }

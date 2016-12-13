@@ -7,7 +7,7 @@ import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
 import ru.mit.spbau.antonpp.torrent.commons.Util;
 import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
-import ru.mit.spbau.antonpp.torrent.commons.network.ConnectionException;
+import ru.mit.spbau.antonpp.torrent.commons.network.ConnectionIOException;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.ClientRequestCode;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.TrackerRequestCode;
 
@@ -19,7 +19,6 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import static ru.mit.spbau.antonpp.torrent.client.TorrentClient.MAX_THREADS;
@@ -51,6 +50,7 @@ public class ClientRequester implements Closeable {
                 for (int i = 0; i < numFiles; ++i) {
                     val id = inputStream.readInt();
                     result.put(id, FileRecord.builder()
+                            .id(id)
                             .name(inputStream.readUTF())
                             .size(inputStream.readLong())
                             .build());
@@ -60,15 +60,15 @@ public class ClientRequester implements Closeable {
         }.request();
     }
 
-    public int requestUploadFile(final String name, final long size) throws RequestFailedException {
-        return new AbstractRequester<Integer>(host, trackerPort) {
+    public FileRecord requestUploadFile(final String name, final long size) throws RequestFailedException {
+        return new AbstractRequester<FileRecord>(host, trackerPort) {
 
             @Override
-            protected Integer execute(DataInputStream inputStream, DataOutputStream outputStream) throws IOException {
+            protected FileRecord execute(DataInputStream inputStream, DataOutputStream outputStream) throws IOException {
                 outputStream.writeByte(TrackerRequestCode.RQ_UPLOAD);
                 outputStream.writeUTF(name);
                 outputStream.writeLong(size);
-                return inputStream.readInt();
+                return FileRecord.builder().name(name).size(size).id(inputStream.readInt()).build();
             }
         }.request();
     }
@@ -97,38 +97,39 @@ public class ClientRequester implements Closeable {
         }.request();
     }
 
-    public void requestDownloadFile(int id, ClientFileManager fileManager, DownloadFileCallback callback) {
-        final Map<Integer, FileRecord> fileRecords;
-        try {
-            fileRecords = requestFilesList();
-        } catch (RequestFailedException e) {
-            callback.onFail(id, e);
-            return;
+    public void requestDownloadFile(int id, ClientFileManager fileManager, DownloadFileCallback callback) throws RequestFailedException {
+        final Map<Integer, FileRecord> fileRecords = requestFilesList();
+        if (!fileRecords.containsKey(id)) {
+            throw new RequestFailedException("No files were found with such id");
         }
-        final long fileSizeTracker = fileRecords.entrySet().stream().filter(x -> x.getKey() == id).findAny()
-                .map(Map.Entry::getValue).map(FileRecord::getSize).orElse(0L);
+        val record = fileRecords.get(id);
+        try {
+            if (!fileManager.hasFile(id)) {
+                fileManager.createEmpty(record);
+            }
 
-        while (true) {
-            final long fileSizeClient;
-            try {
-                fileSizeClient = fileManager.getSize(id);
-                if (fileSizeClient >= fileSizeTracker) {
-                    break;
-                }
-                callback.progress(id, fileSizeClient, fileSizeTracker);
-                final Set<Integer> alreadyHave = fileManager.getAvailableParts(id);
-                final List<SeedRecord> sources = requestSources(id);
-                final Map<Integer, SeedRecord> sourcesMap = getSourcesMap(id, alreadyHave, sources);
+            long fileSizeClient = fileManager.getSize(id);
+            callback.progress(id, fileSizeClient, record.getSize());
+
+            while (fileSizeClient < record.getSize()) {
+                val alreadyHave = fileManager.getAvailableParts(id);
+                val sources = requestSources(id);
+                val sourcesMap = getSourcesMap(id, alreadyHave, sources);
+
                 if (sourcesMap.isEmpty()) {
+                    // there are alive seeds, but they do not have any new parts
                     callback.noSeeds(id);
                     return;
                 }
+
                 downloadParts(id, sourcesMap, fileManager);
-            } catch (RequestFailedException | IOException | InterruptedException e) {
-                callback.onFail(id, e);
+                fileSizeClient = fileManager.getSize(id);
+                callback.progress(id, fileSizeClient, record.getSize());
             }
+        } catch (IOException e) {
+            throw new RequestFailedException(e);
         }
-        callback.progress(id, fileSizeTracker, fileSizeTracker);
+
         callback.onFinish(id);
     }
 
@@ -156,26 +157,32 @@ public class ClientRequester implements Closeable {
     private void downloadParts(int id, Map<Integer, SeedRecord> sourcesMap, ClientFileManager fileManager) throws RequestFailedException {
         // fuck lombok + idea + java 1.8
         // it seems that val does not work when it is declared in lambda scope
-
-        List<? extends Future<?>> partFutures = sourcesMap.entrySet().stream().map(x -> uploadExecutor.submit(() -> {
+        val partFutures = sourcesMap.entrySet().stream().limit(MAX_THREADS).map(x -> uploadExecutor.submit(() -> {
             final int part = x.getKey();
             final SeedRecord seed = x.getValue();
             try {
-
                 final byte[] data = requestFilePart(id, part, seed);
                 fileManager.updateFilePart(id, part, data);
             } catch (RequestFailedException | IOException e) {
-                log.error("Failed to download part from {}", seed, e);
+                throw new RuntimeException(e);
             }
         })).collect(Collectors.toList());
+
+        Throwable lastError = null;
+        boolean atLeastOneFinished = false;
+
         for (val partFuture : partFutures) {
             try {
                 partFuture.get();
-            } catch (ExecutionException e) {
+                atLeastOneFinished = true;
+            } catch (ExecutionException | InterruptedException e) {
                 // ignore it as we do not want to cancel downloading because of one failed part
-            } catch (InterruptedException e) {
-                throw new RequestFailedException(e);
+                lastError = e;
             }
+        }
+        if (!atLeastOneFinished) {
+            // no parts downloaded - something really wrong
+            throw new RequestFailedException("Could not complete downloading of any part", lastError);
         }
 
     }
@@ -196,11 +203,13 @@ public class ClientRequester implements Closeable {
         }.request();
     }
 
-    private Map<Integer, SeedRecord> getSourcesMap(int id, Set<Integer> notNeededParts, List<SeedRecord> seeds) throws InterruptedException {
+    private Map<Integer, SeedRecord> getSourcesMap(int id, Set<Integer> notNeededParts, List<SeedRecord> seeds) throws RequestFailedException {
         val sourcesMap = new HashMap<Integer, List<SeedRecord>>();
+        Throwable lastError = null;
+        boolean allSeedsFailed = true;
         for (val seed : seeds) {
             try {
-                final Set<Integer> availableParts = requestSeedAvailableParts(id, seed);
+                val availableParts = requestSeedAvailableParts(id, seed);
                 availableParts.removeAll(notNeededParts);
                 availableParts.forEach(x -> {
                     if (!sourcesMap.containsKey(x)) {
@@ -208,9 +217,15 @@ public class ClientRequester implements Closeable {
                     }
                     sourcesMap.get(x).add(seed);
                 });
-            } catch (RequestFailedException | ConnectionException e) {
+                allSeedsFailed = false;
+            } catch (ConnectionIOException e) {
                 log.error("Connection to {} failed. Ignoring this seed.", seed, e);
+                lastError = e;
             }
+        }
+        if (allSeedsFailed) {
+            // could not connect to any seed. Should throw the reason
+            throw new RequestFailedException("Could not connect to any seed", lastError);
         }
         return sourcesMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, x -> Util.getRandomElement(x.getValue())));

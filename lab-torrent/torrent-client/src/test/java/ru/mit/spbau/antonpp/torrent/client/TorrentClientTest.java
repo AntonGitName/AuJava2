@@ -118,7 +118,7 @@ public class TorrentClientTest {
         TorrentClient client2 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT2, new StubCallback(), CLIENT_WD2);
         Path destination = TEST_DIR.resolve("whatever.txt");
         DownloadCallback callback = new DownloadCallback(destination, FILE_A1);
-        client2.requestDownloadFileAsync(id, destination.toString(), callback);
+        client2.requestDownloadFile(id, destination.toString(), callback);
         int sleepTime = 0;
         while (!callback.isReady()) {
             int ms = 100;
@@ -148,7 +148,7 @@ public class TorrentClientTest {
         TorrentClient client3 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT3, new StubCallback(), CLIENT_WD3);
         Path destination = TEST_DIR.resolve("a.txt");
         DownloadCallback callback = new DownloadCallback(destination, FILE_A1);
-        client3.requestDownloadFileAsync(id, destination.toString(), callback);
+        client3.requestDownloadFile(id, destination.toString(), callback);
 
         client1.close();
         client2.close();
@@ -220,6 +220,11 @@ public class TorrentClientTest {
 
         @Override
         public void progress(int id, long downloadedSize, long fullSize) {
+        }
+
+        @Override
+        public void noSeeds(int id) {
+
         }
 
         public boolean isReady() {

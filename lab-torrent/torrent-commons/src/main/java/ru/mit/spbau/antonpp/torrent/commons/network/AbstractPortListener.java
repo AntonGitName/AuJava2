@@ -1,12 +1,11 @@
 package ru.mit.spbau.antonpp.torrent.commons.network;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
@@ -15,7 +14,7 @@ import java.util.concurrent.Executors;
  */
 public abstract class AbstractPortListener implements Runnable {
     @NotNull
-    private final ListeningExecutorService handleService;
+    private final ExecutorService handleService;
     @NotNull
     private final ServerSocket serverSocket;
 
@@ -23,10 +22,10 @@ public abstract class AbstractPortListener implements Runnable {
 
     public AbstractPortListener(@NotNull ServerSocket serverSocket, int maxThreads) {
         this.serverSocket = serverSocket;
-        handleService = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(maxThreads));
+        handleService = Executors.newFixedThreadPool(maxThreads);
     }
 
-    protected abstract void handleNewConnection(Socket clientSocket, ListeningExecutorService executor);
+    protected abstract void handleNewConnection(Socket clientSocket, ExecutorService executor);
 
     protected abstract void onConnect();
 
@@ -51,7 +50,7 @@ public abstract class AbstractPortListener implements Runnable {
 
     public void stop() throws IOException {
         isRunning = false;
-        serverSocket.close();
         handleService.shutdownNow();
+        serverSocket.close();
     }
 }

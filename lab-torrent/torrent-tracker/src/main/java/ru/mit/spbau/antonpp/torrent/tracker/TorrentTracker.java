@@ -5,7 +5,6 @@ import lombok.val;
 import ru.mit.spbau.antonpp.torrent.commons.Util;
 import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
-import ru.mit.spbau.antonpp.torrent.commons.network.ConnectionException;
 import ru.mit.spbau.antonpp.torrent.commons.serialization.FileSerializable;
 import ru.mit.spbau.antonpp.torrent.commons.serialization.SerializationException;
 import ru.mit.spbau.antonpp.torrent.tracker.exceptions.TrackerStartException;
@@ -16,9 +15,7 @@ import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -56,25 +53,21 @@ public class TorrentTracker implements FileSerializable, Closeable {
                 Files.createDirectories(path.getParent());
             }
             tracker.start(port);
-        } catch (ConnectionException | IOException e) {
+        } catch (IOException e) {
             throw new TrackerStartException(e);
         }
         return tracker;
     }
 
-    private void start(short port) {
-        updateClientsExecutor = Executors.newSingleThreadScheduledExecutor();
-        updateClientsExecutor.scheduleAtFixedRate(new UpdateActiveClientsRunnable(), 0, 1, TimeUnit.MINUTES);
-
-        final ServerSocket serverSocket;
-        try {
-            serverSocket = new ServerSocket(port);
-        } catch (IOException e) {
-            throw new ConnectionException("Could not start server", e);
-        }
+    private void start(short port) throws IOException {
+        val serverSocket = new ServerSocket(port);
         portListener = new TrackerPortListener(serverSocket, availableFiles, activeClients, freeId);
+
         listenService = Executors.newSingleThreadExecutor();
         listenService.execute(portListener);
+
+        updateClientsExecutor = Executors.newSingleThreadScheduledExecutor();
+        updateClientsExecutor.scheduleAtFixedRate(new UpdateActiveClientsRunnable(), 0, 1, TimeUnit.MINUTES);
     }
 
     @Override
@@ -107,8 +100,8 @@ public class TorrentTracker implements FileSerializable, Closeable {
         serialize();
     }
 
-    public Map<Integer, FileRecord> getFiles() {
-        return new HashMap<>(availableFiles);
+    public List<FileRecord> getFiles() {
+        return new ArrayList<>(availableFiles.values());
     }
 
     public List<SeedRecord> getUsers() {

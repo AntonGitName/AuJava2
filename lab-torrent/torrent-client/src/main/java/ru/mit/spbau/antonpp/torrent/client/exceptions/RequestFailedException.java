@@ -6,6 +6,14 @@ package ru.mit.spbau.antonpp.torrent.client.exceptions;
  */
 public class RequestFailedException extends Exception {
 
+    public RequestFailedException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public RequestFailedException(String message) {
+        super(message);
+    }
+
     public RequestFailedException(Throwable cause) {
         super(cause);
     }

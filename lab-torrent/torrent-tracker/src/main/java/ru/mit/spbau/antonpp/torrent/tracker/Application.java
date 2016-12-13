@@ -133,7 +133,7 @@ public class Application {
     }
 
     private void handleListFiles() {
-        tracker.getFiles().forEach((id, record) -> System.out.printf("id: %d, file: %s%n", id, record));
+        tracker.getFiles().forEach(record -> System.out.printf("%s%n", record));
     }
 
     private void handleListUsers() {

@@ -14,7 +14,6 @@ import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -31,22 +30,19 @@ public class Application {
     private static final String CMD_UPLOAD = "upload";
     private static final String CMD_DOWNLOAD = "download";
     private static final String CMD_LOCAL = "local";
-
+    private final static String ERROR_TIP = " Please check that:\n" +
+            "   1. Tracker is running.\n" +
+            "   2. Client port is not used by any other application.";
     private final JCommander jc;
     private TorrentClient torrentClient;
-
     @Parameter(names = {"--host"})
     private String host = "localhost";
-
     @Parameter(names = {"--client_port", "-p"})
     private int clientPort = 31001;
-
     @Parameter(names = {"--server_port"})
     private int serverPort = 8081;
-
     @Parameter(names = {"--directory", "-d"})
     private String dir = "torrent-client-files";
-
     @Parameter(names = {"-h", "--help"}, description = "Print this help message and exit", help = true)
     private boolean help;
 
@@ -91,9 +87,10 @@ public class Application {
 
     private static void printToLogAndSout(String msg, Throwable e) {
         log.error(msg, e);
-        System.out.println("ERROR");
-        System.out.println("Here is an exception message (check logs for more information):");
-        System.out.println(msg);
+        System.out.printf("%s\n", msg);
+        val cause = e.getCause();
+        val tip = cause != null ? cause.toString() : e.getMessage();
+        System.out.printf("%s (check logs for more)\n", tip);
     }
 
     private void run() {
@@ -102,7 +99,8 @@ public class Application {
             checkFirstStart();
             torrentClient = new TorrentClient(host, (short) serverPort, (short) clientPort, new UpdateCallback(), Paths.get(dir));
         } catch (TorrentClientStartException | IOException e) {
-            printToLogAndSout("Could not start torrent client =(", e);
+            printToLogAndSout("Could not start torrent client.", e);
+            System.out.println(ERROR_TIP);
             return;
         }
 
@@ -155,18 +153,14 @@ public class Application {
     }
 
     private void handleLocal() {
-        final List<TorrentClient.LocalFileRecord> records;
         final String fmt = "%20s\t%6d\t%10d\t%10d\t%3.2f\n";
-        try {
-            records = torrentClient.requestLocalFiles();
-        } catch (RequestFailedException e) {
-            printToLogAndSout("Failed to request list of files", e);
-            return;
-        }
+        val records = torrentClient.requestLocalFiles();
         System.out.printf("%20s\t%6s\t%10s\t%10s\t%s\n", "Name", "ID", "Downloaded", "Full size", "Percent");
-        records.forEach(record ->
-                System.out.printf(fmt, record.getName(), record.getId(), record.getDownloadedSize(), record.getRealSize(),
-                        100.0 * record.getDownloadedSize() / record.getRealSize())
+        records.forEach(record -> {
+                    final FileRecord realFile = record.getRealFile();
+                    System.out.printf(fmt, realFile.getName(), realFile.getId(), record.getDownloadedSize(),
+                            realFile.getSize(), 100.0 * record.getRation());
+                }
         );
     }
 
@@ -186,15 +180,15 @@ public class Application {
     }
 
     private void handleUploadFile(String[] args) {
-        final int id;
+        final FileRecord record;
         final String pathToFile = args[1];
         try {
-            id = torrentClient.requestUploadFile(pathToFile);
+            record = torrentClient.requestUploadFile(pathToFile);
         } catch (RequestFailedException e) {
-            printToLogAndSout("Failed to request list of files", e);
+            printToLogAndSout("Failed to upload file.", e);
             return;
         }
-        System.out.printf("`%s` was uploaded with id %d\n", pathToFile, id);
+        System.out.printf("%s was uploaded.\n", record);
     }
 
     private void handleDownloadFile(String[] args) {
@@ -208,20 +202,17 @@ public class Application {
         val destination = args[2];
 
         final SaveFileCallback callback = new SaveFileCallback();
-        torrentClient.requestDownloadFileAsync(id, destination, callback);
-        while (!callback.isReady()) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                printToLogAndSout("Interrupted while downloading", e);
-            }
+        try {
+            torrentClient.requestDownloadFile(id, destination, callback);
+        } catch (RequestFailedException e) {
+            printToLogAndSout("Could not download file.", e);
         }
     }
 
     private void checkFirstStart() throws IOException {
         val workingDir = Paths.get(dir);
         if (Files.exists(workingDir)) {
-            System.out.println("Found previously saved torrent files");
+            System.out.println("Found previously saved torrent files.");
         } else {
             System.out.println("No files saved in this workingDir. Creating a new storage.");
             Files.createDirectory(workingDir);
@@ -236,7 +227,8 @@ public class Application {
 
         @Override
         public void onFailure(Throwable t) {
-            printToLogAndSout("Could not send update info to tracker. Closing client...", t);
+            printToLogAndSout("Client update request failed. Closing client...", t);
+            System.out.println(ERROR_TIP);
             try {
                 if (torrentClient != null) {
                     torrentClient.close();
