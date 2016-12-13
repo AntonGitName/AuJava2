@@ -11,8 +11,10 @@ jar {
 }
 
 dependencies {
+    compile project(":lab-torrent:torrent-commons")
+
     // cli
     compile group: 'com.beust', name: 'jcommander', version: '1.48'
     // lombok annotations
-    compileOnly "org.projectlombok:lombok:1.16.10"
+    compileOnly 'org.projectlombok:lombok:1.16.10'
 }

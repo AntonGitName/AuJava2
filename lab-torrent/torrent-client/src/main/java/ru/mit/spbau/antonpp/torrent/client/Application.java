@@ -2,13 +2,14 @@ package ru.mit.spbau.antonpp.torrent.client;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.google.common.util.concurrent.FutureCallback;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
-import ru.mit.spbau.antonpp.torrent.client.exceptions.TorrentClientException;
-import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
-import ru.mit.spbau.antonpp.torrent.client.requester.ClientRequester;
-import ru.mit.spbau.antonpp.torrent.protocol.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.client.exceptions.TorrentClientStartException;
+import ru.mit.spbau.antonpp.torrent.client.requests.ClientRequester.DownloadFileCallback;
+import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,10 +37,13 @@ public class Application {
     private String host = "localhost";
 
     @Parameter(names = {"--client_port", "-p"})
-    private short clientPort = 10001;
+    private short clientPort = 31001;
 
     @Parameter(names = {"--server_port"})
     private short serverPort = 8081;
+
+    @Parameter(names = {"--directory", "-d"})
+    private String dir = "torrent-client-files";
 
     @Parameter(names = {"-h", "--help"}, description = "Print this help message and exit", help = true)
     private boolean help;
@@ -83,15 +87,17 @@ public class Application {
 
     private static void printToLogAndSout(String msg, Throwable e) {
         log.error(msg, e);
+        System.out.println("ERROR");
+        System.out.println("Here is an exception message (check logs for more information):");
         System.out.println(msg);
     }
 
     private void run() {
 
         try {
-            val fileManager = loadClientFiles();
-            torrentClient = new TorrentClient(host, serverPort, clientPort, fileManager);
-        } catch (TorrentClientException | IOException e) {
+            checkFirstStart();
+            torrentClient = new TorrentClient(host, serverPort, clientPort, new UpdateCallback(), Paths.get(dir));
+        } catch (TorrentClientStartException | IOException e) {
             printToLogAndSout("Could not start torrent client =(", e);
             return;
         }
@@ -116,6 +122,11 @@ public class Application {
                 switch (split[0]) {
 
                     case CMD_EXIT:
+                        try {
+                            torrentClient.close();
+                        } catch (IOException e) {
+                            printToLogAndSout("Could not save tracker state", e);
+                        }
                         System.out.println("Bye!");
                         return;
                     case CMD_LIST:
@@ -165,31 +176,69 @@ public class Application {
 
     private void handleDownloadFile(String[] args) {
         val id = Integer.valueOf(args[1]);
-        torrentClient.requestDownloadFileAsync(id, new ClientRequester.DownloadFileCallback() {
-            @Override
-            public void onFinish(int id) {
-                System.out.printf("Download if file with id=%d has finished\n", id);
-            }
+        val destination = args[2];
 
-            @Override
-            public void onFail(int id, Throwable e) {
-                printToLogAndSout(String.format("Download if file with id=%d has failed\n", id), e);
+        final SaveFileCallback callback = new SaveFileCallback();
+        torrentClient.requestDownloadFileAsync(id, destination, callback);
+        while (!callback.isReady()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                printToLogAndSout("Interrupted while downloading", e);
             }
-        });
-
+        }
     }
 
-    private ClientFileManager loadClientFiles() throws IOException {
-        val fileManager = new ClientFileManager();
-        val path = Paths.get(System.getProperty("user.dir"), ClientFileManager.MANAGER_DATA);
-        if (Files.exists(path)) {
+    private void checkFirstStart() throws IOException {
+        val workingDir = Paths.get(dir);
+        if (Files.exists(workingDir)) {
             System.out.println("Found previously saved torrent files");
-            fileManager.deserialize(path);
         } else {
-            System.out.println("No files saved in this dir. Creating a new storage.");
-            Files.createDirectory(path);
-            fileManager.serialize(path);
+            System.out.println("No files saved in this workingDir. Creating a new storage.");
+            Files.createDirectory(workingDir);
         }
-        return fileManager;
+    }
+
+    private final class UpdateCallback implements FutureCallback<Object> {
+        @Override
+        public void onSuccess(Object result) {
+            log.info("Send update info to tracker successfully");
+        }
+
+        @Override
+        public void onFailure(Throwable t) {
+            printToLogAndSout("Could not send update info to tracker. Closing client...", t);
+            try {
+                if (torrentClient != null) {
+                    torrentClient.close();
+                }
+            } catch (IOException e) {
+                printToLogAndSout("Could not close client", e);
+            }
+            System.exit(1);
+        }
+    }
+
+    private final class SaveFileCallback implements DownloadFileCallback {
+
+        @Getter
+        private boolean ready = false;
+
+        @Override
+        public void onFinish(int id) {
+            System.out.println("Download has finished.");
+            ready = true;
+        }
+
+        @Override
+        public void onFail(int id, Throwable e) {
+            ready = true;
+            printToLogAndSout(String.format("Download if file with id=%d has failed\n", id), e);
+        }
+
+        @Override
+        public void progress(int id, long downloadedSize, long fullSize) {
+            System.out.printf("Progress: %.2f\n", (double) downloadedSize / fullSize);
+        }
     }
 }

@@ -1,13 +1,11 @@
 package ru.mit.spbau.antonpp.torrent.tracker.handler;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListeningExecutorService;
-import lombok.val;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import ru.mit.spbau.antonpp.torrent.protocol.data.FileRecord;
-import ru.mit.spbau.antonpp.torrent.protocol.data.SeedRecord;
-import ru.mit.spbau.antonpp.torrent.protocol.network.AbstractPortListener;
-import ru.mit.spbau.antonpp.torrent.protocol.network.ConnectionCallback;
+import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
+import ru.mit.spbau.antonpp.torrent.commons.network.AbstractPortListener;
 import ru.mit.spbau.antonpp.torrent.tracker.ClientRecord;
 import ru.mit.spbau.antonpp.torrent.tracker.TorrentTracker;
 
@@ -20,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author antonpp
  * @since 12/12/2016
  */
+@Slf4j
 public class TrackerPortListener extends AbstractPortListener {
 
     @NotNull
@@ -40,8 +39,22 @@ public class TrackerPortListener extends AbstractPortListener {
     }
 
     @Override
-    protected void handleNewConnnection(Socket clientSocket, ListeningExecutorService executor) {
-        val listenableFuture = executor.submit(new TrackerConnectionHandler(clientSocket, availableFiles, activeClients, freeId));
-        Futures.addCallback(listenableFuture, new ConnectionCallback(TrackerPortListener.class));
+    protected void handleNewConnection(Socket clientSocket, ListeningExecutorService executor) {
+        executor.submit(new TrackerConnectionHandler(clientSocket, availableFiles, activeClients, freeId));
+    }
+
+    @Override
+    protected void onConnect() {
+        log.debug("Connected");
+    }
+
+    @Override
+    protected void onDisconnect() {
+        log.debug("Disconnected");
+    }
+
+    @Override
+    protected void onConnectionFail() {
+        log.warn("Disconnected");
     }
 }

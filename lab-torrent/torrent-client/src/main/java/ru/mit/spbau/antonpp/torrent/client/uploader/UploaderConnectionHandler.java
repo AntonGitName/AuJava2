@@ -5,8 +5,9 @@ import lombok.val;
 import org.jetbrains.annotations.NotNull;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.ClientConnectionException;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
-import ru.mit.spbau.antonpp.torrent.protocol.network.AbstractConnectionHandler;
-import ru.mit.spbau.antonpp.torrent.protocol.protocol.ClientRequestCode;
+import ru.mit.spbau.antonpp.torrent.commons.network.AbstractConnectionHandler;
+import ru.mit.spbau.antonpp.torrent.commons.protocol.ClientRequestCode;
+import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -29,16 +30,27 @@ public class UploaderConnectionHandler extends AbstractConnectionHandler {
         this.fileManager = fileManager;
     }
 
-    protected void handle(DataInputStream dis, DataOutputStream dos) {
+    @Override
+    protected void onConnected() {
+        log.debug("Connected");
+    }
+
+    @Override
+    protected void onDisconnected() {
+        log.debug("Disconnected");
+    }
+
+    protected void handle(byte requestCode, DataInputStream dis, DataOutputStream dos) {
         try {
-            val requestCode = dis.readInt();
-            log.debug("Received request with code {}", requestCode);
             switch (requestCode) {
                 case ClientRequestCode.RQ_GET:
                     handleGet(dis, dos);
                     break;
                 case ClientRequestCode.RQ_STAT:
                     handleStat(dis, dos);
+                    break;
+                case CommonRequestCode.RQ_DC:
+                    disconnect();
                     break;
                 default:
                     throw new ClientConnectionException("Unknown command");
@@ -55,7 +67,9 @@ public class UploaderConnectionHandler extends AbstractConnectionHandler {
         val id = dis.readInt();
         val part = dis.readInt();
         log.debug("received request: GET {} {}", id, part);
-        dos.write(fileManager.getFilePart(id, part));
+        val data = fileManager.getFilePart(id, part);
+        dos.writeLong(data.length);
+        dos.write(data);
     }
 
     private void handleStat(DataInputStream dis, DataOutputStream dos) throws IOException {

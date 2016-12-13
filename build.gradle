@@ -19,20 +19,8 @@ subprojects {
         // annotations
         compile group: 'org.jetbrains', name: 'annotations', version: '15.0'
         // hashing
-        compile group: 'com.google.guava', name: 'guava', version: '13.0'
+        compile group: 'com.google.guava', name: 'guava', version: '15.0'
         // logging
         compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.2'
-    }
-}
-
-project(':lab-torrent:torrent-client') {
-    dependencies {
-        compile project(':lab-torrent:torrent-commons')
-    }
-}
-
-project(':lab-torrent:torrent-tracker') {
-    dependencies {
-        compile project(':lab-torrent:torrent-commons')
     }
 }

@@ -3,16 +3,19 @@ package ru.mit.spbau.antonpp.torrent.tracker.handler;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
-import ru.mit.spbau.antonpp.torrent.protocol.data.FileRecord;
-import ru.mit.spbau.antonpp.torrent.protocol.data.SeedRecord;
-import ru.mit.spbau.antonpp.torrent.protocol.network.AbstractConnectionHandler;
-import ru.mit.spbau.antonpp.torrent.protocol.protocol.TrackerRequestCode;
+import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
+import ru.mit.spbau.antonpp.torrent.commons.network.AbstractConnectionHandler;
+import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
+import ru.mit.spbau.antonpp.torrent.commons.protocol.TrackerRequestCode;
 import ru.mit.spbau.antonpp.torrent.tracker.ClientRecord;
+import ru.mit.spbau.antonpp.torrent.tracker.TorrentTracker;
 import ru.mit.spbau.antonpp.torrent.tracker.exceptions.TrackerConnectionException;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.HashSet;
@@ -50,10 +53,18 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
     }
 
     @Override
-    protected void handle(DataInputStream dis, DataOutputStream dos) {
+    protected void onConnected() {
+        log.debug("Connected");
+    }
+
+    @Override
+    protected void onDisconnected() {
+        log.debug("Disconnected");
+    }
+
+    @Override
+    protected void handle(byte requestCode, DataInputStream dis, DataOutputStream dos) {
         try {
-            val requestCode = dis.readInt();
-            log.debug("Received request with code {}", requestCode);
             switch (requestCode) {
                 case TrackerRequestCode.RQ_LIST:
                     handleList(dis, dos);
@@ -65,7 +76,10 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
                     handleSources(dis, dos);
                     break;
                 case TrackerRequestCode.RQ_UPDATE:
-                    handleUpldate(dis, dos);
+                    handleUpdate(dis, dos);
+                    break;
+                case CommonRequestCode.RQ_DC:
+                    disconnect();
                     break;
                 default:
                     throw new TrackerConnectionException("Unknown command");
@@ -78,13 +92,11 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
         }
     }
 
-    private void handleUpldate(DataInputStream dis, DataOutputStream dos) throws IOException {
-        val ip = new byte[4];
-        ip[0] = dis.readByte();
-        ip[1] = dis.readByte();
-        ip[2] = dis.readByte();
-        ip[3] = dis.readByte();
+    private void handleUpdate(DataInputStream dis, DataOutputStream dos) throws IOException {
         val port = dis.readShort();
+        val ip = ((InetSocketAddress) clientSocket.getRemoteSocketAddress()).getAddress().getAddress();
+        val strInp = String.format("%s %d", TorrentTracker.ipToStr(ip), port);
+        log.debug("received request: UPDATE {}", strInp);
         val numFiles = dis.readInt();
         val seed = SeedRecord.builder().ip(ip).port(port).build();
         val time = System.currentTimeMillis();
@@ -95,6 +107,8 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
         val client = ClientRecord.builder().files(files).lastUpdateTime(time).build();
 
         activeClients.put(seed, client);
+
+        dos.writeBoolean(true);
     }
 
     private void handleSources(DataInputStream dis, DataOutputStream dos) throws IOException {
@@ -107,7 +121,7 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
             val ip = seed.getKey().getIp();
             val port = seed.getKey().getPort();
             dos.write(ip);
-            dos.writeInt(port);
+            dos.writeShort(port);
         }
 
     }
