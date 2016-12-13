@@ -14,6 +14,7 @@ import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -26,9 +27,10 @@ public class Application {
 
     private static final String CMD_HELP = "help";
     private static final String CMD_EXIT = "exit";
-    private static final String CMD_LIST = "connect";
+    private static final String CMD_LIST = "list";
     private static final String CMD_UPLOAD = "upload";
     private static final String CMD_DOWNLOAD = "download";
+    private static final String CMD_LOCAL = "local";
 
     private final JCommander jc;
     private TorrentClient torrentClient;
@@ -37,10 +39,10 @@ public class Application {
     private String host = "localhost";
 
     @Parameter(names = {"--client_port", "-p"})
-    private short clientPort = 31001;
+    private int clientPort = 31001;
 
     @Parameter(names = {"--server_port"})
-    private short serverPort = 8081;
+    private int serverPort = 8081;
 
     @Parameter(names = {"--directory", "-d"})
     private String dir = "torrent-client-files";
@@ -68,17 +70,19 @@ public class Application {
     }
 
     private static void printCommands() {
-        final String fmt = "\t%s\t-\t%s%n";
+        final String fmt = "\t%32s\t-\t%s%n";
         String cmd = CMD_HELP;
         System.out.printf(fmt, cmd, "Print list of available commands");
         cmd = CMD_EXIT;
         System.out.printf(fmt, cmd, "Exit the application");
-        cmd = String.format("%s <source> <name>", CMD_UPLOAD);
+        cmd = String.format("%s <source> <id>", CMD_UPLOAD);
         System.out.printf(fmt, cmd, "Upload specified file");
-        cmd = String.format("%s <name> <destination>", CMD_DOWNLOAD);
+        cmd = String.format("%s <id> <destination>", CMD_DOWNLOAD);
         System.out.printf(fmt, cmd, "Download specified file");
         cmd = CMD_LIST;
-        System.out.printf(fmt, cmd, "List available files");
+        System.out.printf(fmt, cmd, "List files known by tracker");
+        cmd = CMD_LOCAL;
+        System.out.printf(fmt, cmd, "List local uploaded files");
     }
 
     public static void main(String[] args) throws IOException {
@@ -96,7 +100,7 @@ public class Application {
 
         try {
             checkFirstStart();
-            torrentClient = new TorrentClient(host, serverPort, clientPort, new UpdateCallback(), Paths.get(dir));
+            torrentClient = new TorrentClient(host, (short) serverPort, (short) clientPort, new UpdateCallback(), Paths.get(dir));
         } catch (TorrentClientStartException | IOException e) {
             printToLogAndSout("Could not start torrent client =(", e);
             return;
@@ -138,6 +142,9 @@ public class Application {
                     case CMD_DOWNLOAD:
                         handleDownloadFile(split);
                         break;
+                    case CMD_LOCAL:
+                        handleLocal();
+                        break;
                     case CMD_HELP:
                     default:
                         printCommands();
@@ -145,6 +152,22 @@ public class Application {
                 }
             }
         }
+    }
+
+    private void handleLocal() {
+        final List<TorrentClient.LocalFileRecord> records;
+        final String fmt = "%20s\t%6d\t%10d\t%10d\t%3.2f\n";
+        try {
+            records = torrentClient.requestLocalFiles();
+        } catch (RequestFailedException e) {
+            printToLogAndSout("Failed to request list of files", e);
+            return;
+        }
+        System.out.printf("%20s\t%6s\t%10s\t%10s\t%s\n", "Name", "ID", "Downloaded", "Full size", "Percent");
+        records.forEach(record ->
+                System.out.printf(fmt, record.getName(), record.getId(), record.getDownloadedSize(), record.getRealSize(),
+                        100.0 * record.getDownloadedSize() / record.getRealSize())
+        );
     }
 
     private void handleListFiles() {
@@ -175,7 +198,13 @@ public class Application {
     }
 
     private void handleDownloadFile(String[] args) {
-        val id = Integer.valueOf(args[1]);
+        final int id;
+        try {
+            id = Integer.valueOf(args[1]);
+        } catch (NumberFormatException e) {
+            System.out.println("ID must be an integer.");
+            return;
+        }
         val destination = args[2];
 
         final SaveFileCallback callback = new SaveFileCallback();
@@ -238,7 +267,13 @@ public class Application {
 
         @Override
         public void progress(int id, long downloadedSize, long fullSize) {
-            System.out.printf("Progress: %.2f\n", (double) downloadedSize / fullSize);
+            System.out.printf("Progress: %3.2f%%\n", 100.0 * downloadedSize / fullSize);
+        }
+
+        @Override
+        public void noSeeds(int id) {
+            System.out.println("Download has been stopped because " +
+                    "there are not enough available parts of the file at the moment.");
         }
     }
 }

@@ -2,6 +2,7 @@ package ru.mit.spbau.antonpp.torrent.tracker;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import ru.mit.spbau.antonpp.torrent.commons.Util;
 import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
 import ru.mit.spbau.antonpp.torrent.commons.network.ConnectionException;
@@ -14,6 +15,10 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -57,12 +62,6 @@ public class TorrentTracker implements FileSerializable, Closeable {
         return tracker;
     }
 
-    public static String ipToStr(byte[] ip) {
-        return IntStream.range(0, ip.length)
-                .mapToObj(i -> Byte.toString(ip[i]))
-                .collect(Collectors.joining(":"));
-    }
-
     private void start(short port) {
         updateClientsExecutor = Executors.newSingleThreadScheduledExecutor();
         updateClientsExecutor.scheduleAtFixedRate(new UpdateActiveClientsRunnable(), 0, 1, TimeUnit.MINUTES);
@@ -92,8 +91,8 @@ public class TorrentTracker implements FileSerializable, Closeable {
     @Override
     public void deserialize() {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(path.toFile()))) {
-            activeClients = (ConcurrentHashMap<SeedRecord, ClientRecord>) os.readObject();
             availableFiles = (ConcurrentHashMap<Integer, FileRecord>) os.readObject();
+            activeClients = (ConcurrentHashMap<SeedRecord, ClientRecord>) os.readObject();
             freeId = (AtomicInteger) os.readObject();
         } catch (ClassNotFoundException | IOException e) {
             throw new SerializationException("Could not deserialize TorrentTracker", e);
@@ -106,6 +105,14 @@ public class TorrentTracker implements FileSerializable, Closeable {
         portListener.stop();
         listenService.shutdown();
         serialize();
+    }
+
+    public Map<Integer, FileRecord> getFiles() {
+        return new HashMap<>(availableFiles);
+    }
+
+    public List<SeedRecord> getUsers() {
+        return new ArrayList<>(activeClients.keySet());
     }
 
     private final class UpdateActiveClientsRunnable implements Runnable {
@@ -124,7 +131,7 @@ public class TorrentTracker implements FileSerializable, Closeable {
         private String generateLogMessage() {
             val lines = activeClients.entrySet().stream().map(x -> {
                 final byte[] ip = x.getKey().getIp();
-                final String ipStr = ipToStr(ip);
+                final String ipStr = Util.ipToStr(ip);
                 return String.format("ip=%s, port=%s", ipStr, x.getKey().getPort());
             }).collect(Collectors.toList());
             return String.format("Active clients: %d\n", lines.size()) +

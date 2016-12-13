@@ -3,13 +3,13 @@ package ru.mit.spbau.antonpp.torrent.tracker.handler;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
+import ru.mit.spbau.antonpp.torrent.commons.Util;
 import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
 import ru.mit.spbau.antonpp.torrent.commons.network.AbstractConnectionHandler;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.TrackerRequestCode;
 import ru.mit.spbau.antonpp.torrent.tracker.ClientRecord;
-import ru.mit.spbau.antonpp.torrent.tracker.TorrentTracker;
 import ru.mit.spbau.antonpp.torrent.tracker.exceptions.TrackerConnectionException;
 
 import java.io.DataInputStream;
@@ -95,7 +95,7 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
     private void handleUpdate(DataInputStream dis, DataOutputStream dos) throws IOException {
         val port = dis.readShort();
         val ip = ((InetSocketAddress) clientSocket.getRemoteSocketAddress()).getAddress().getAddress();
-        val strInp = String.format("%s %d", TorrentTracker.ipToStr(ip), port);
+        val strInp = String.format("%s %d", Util.ipToStr(ip), port);
         log.debug("received request: UPDATE {}", strInp);
         val numFiles = dis.readInt();
         val seed = SeedRecord.builder().ip(ip).port(port).build();

@@ -4,6 +4,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import ru.mit.spbau.antonpp.torrent.commons.Util;
 import ru.mit.spbau.antonpp.torrent.tracker.exceptions.TrackerStartException;
 
 import java.io.IOException;
@@ -20,13 +21,15 @@ import java.util.Scanner;
 public class Application {
     private static final String CMD_HELP = "help";
     private static final String CMD_EXIT = "exit";
+    private static final String CMD_USERS = "users";
+    private static final String CMD_FILES = "files";
     private static final Path TRACKER_FILES = Paths.get("./tracker-data");
 
     private final JCommander jc;
     private TorrentTracker tracker;
 
     @Parameter(names = {"-p", "--port"})
-    private short port = 8081;
+    private int port = 8081;
 
     @Parameter(names = {"-h", "--help"}, description = "Print this help message and exit", help = true)
     private boolean help;
@@ -56,6 +59,10 @@ public class Application {
         System.out.printf(fmt, cmd, "Print list of available commands");
         cmd = CMD_EXIT;
         System.out.printf(fmt, cmd, "Exit the application and saves tracker state");
+        cmd = CMD_USERS;
+        System.out.printf(fmt, cmd, "List recently updated users");
+        cmd = CMD_FILES;
+        System.out.printf(fmt, cmd, "List available files");
     }
 
     public static void main(String[] args) throws IOException {
@@ -78,7 +85,7 @@ public class Application {
                 System.out.println("Could not found tracker state in current folder. " +
                         "Creating empty tracker...");
             }
-            tracker = TorrentTracker.create(TRACKER_FILES, port);
+            tracker = TorrentTracker.create(TRACKER_FILES, (short) port);
         } catch (TrackerStartException e) {
             printToLogAndSout("Failed to start tracker.", e);
             return;
@@ -102,6 +109,12 @@ public class Application {
 
                 switch (line) {
 
+                    case CMD_FILES:
+                        handleListFiles();
+                        break;
+                    case CMD_USERS:
+                        handleListUsers();
+                        break;
                     case CMD_EXIT:
                         try {
                             tracker.close();
@@ -117,5 +130,13 @@ public class Application {
                 }
             }
         }
+    }
+
+    private void handleListFiles() {
+        tracker.getFiles().forEach((id, record) -> System.out.printf("id: %d, file: %s%n", id, record));
+    }
+
+    private void handleListUsers() {
+        tracker.getUsers().forEach(x -> System.out.printf("ip=%s port=%d%n", Util.ipToStr(x.getIp()), x.getPort()));
     }
 }

@@ -11,6 +11,7 @@ import ru.mit.spbau.antonpp.torrent.commons.network.ConnectionException;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.ClientRequestCode;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.TrackerRequestCode;
 
+import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -28,7 +29,7 @@ import static ru.mit.spbau.antonpp.torrent.client.TorrentClient.MAX_THREADS;
  * @since 12.12.16
  */
 @Slf4j
-public class ClientRequester {
+public class ClientRequester implements Closeable {
 
     private final String host;
     private final int trackerPort;
@@ -118,11 +119,16 @@ public class ClientRequester {
                 final Set<Integer> alreadyHave = fileManager.getAvailableParts(id);
                 final List<SeedRecord> sources = requestSources(id);
                 final Map<Integer, SeedRecord> sourcesMap = getSourcesMap(id, alreadyHave, sources);
+                if (sourcesMap.isEmpty()) {
+                    callback.noSeeds(id);
+                    return;
+                }
                 downloadParts(id, sourcesMap, fileManager);
             } catch (RequestFailedException | IOException | InterruptedException e) {
                 callback.onFail(id, e);
             }
         }
+        callback.progress(id, fileSizeTracker, fileSizeTracker);
         callback.onFinish(id);
     }
 
@@ -210,12 +216,19 @@ public class ClientRequester {
                 .collect(Collectors.toMap(Map.Entry::getKey, x -> Util.getRandomElement(x.getValue())));
     }
 
+    @Override
+    public void close() throws IOException {
+        uploadExecutor.shutdownNow();
+    }
+
     public interface DownloadFileCallback {
         void onFinish(int id);
 
         void onFail(int id, Throwable e);
 
         void progress(int id, long downloadedSize, long fullSize);
+
+        void noSeeds(int id);
 
     }
 }

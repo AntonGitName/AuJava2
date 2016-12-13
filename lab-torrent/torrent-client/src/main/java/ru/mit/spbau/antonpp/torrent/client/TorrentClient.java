@@ -4,6 +4,8 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import lombok.Builder;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
@@ -21,6 +23,8 @@ import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -61,10 +65,11 @@ public final class TorrentClient implements Closeable {
 
     @Override
     public void close() throws IOException {
-        fileManager.serialize();
+        requester.close();
         updateExecutor.shutdownNow();
         portListener.stop();
         listenService.shutdown();
+        fileManager.serialize();
     }
 
     public void requestDownloadFileAsync(int id, String destination, DownloadFileCallback callback) {
@@ -80,11 +85,41 @@ public final class TorrentClient implements Closeable {
         try {
             val id = requester.requestUploadFile(path.getFileName().toString(), Files.size(path));
             fileManager.saveFile(path, id);
+            fileManager.serialize();
             return id;
         } catch (IOException e) {
             throw new RequestFailedException(e);
         }
 
+    }
+
+    public List<LocalFileRecord> requestLocalFiles() throws RequestFailedException {
+        val trackerList = requestFilesList();
+        val localFiles = fileManager.getAvailableFiles();
+        final List<LocalFileRecord> result = new ArrayList<>(localFiles.size());
+        try {
+            for (val id : localFiles) {
+
+                result.add(LocalFileRecord.builder()
+                        .downloadedSize(fileManager.getSize(id))
+                        .name(trackerList.get(id).getName())
+                        .id(id)
+                        .realSize(trackerList.get(id).getSize())
+                        .build());
+            }
+        } catch (IOException e) {
+            throw new RequestFailedException(e);
+        }
+        return result;
+    }
+
+    @Data
+    @Builder
+    public static final class LocalFileRecord {
+        private final String name;
+        private final int id;
+        private final long downloadedSize;
+        private final long realSize;
     }
 
     private final class SaveFileCallback implements DownloadFileCallback {
@@ -101,6 +136,7 @@ public final class TorrentClient implements Closeable {
         public void onFinish(int id) {
             try {
                 fileManager.getFile(destination, id);
+                fileManager.serialize();
             } catch (IOException e) {
                 appCallback.onFail(id, e);
             }
@@ -115,6 +151,11 @@ public final class TorrentClient implements Closeable {
         @Override
         public void progress(int id, long downloadedSize, long fullSize) {
             appCallback.progress(id, downloadedSize, fullSize);
+        }
+
+        @Override
+        public void noSeeds(int id) {
+            appCallback.noSeeds(id);
         }
     }
 }

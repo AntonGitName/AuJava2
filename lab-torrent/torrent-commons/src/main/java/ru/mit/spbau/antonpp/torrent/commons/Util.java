@@ -8,6 +8,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * @author Anton Mordberg
@@ -38,6 +40,12 @@ public class Util {
                 return FileVisitResult.CONTINUE;
             }
         });
+    }
+
+    public static String ipToStr(byte[] ip) {
+        return IntStream.range(0, ip.length)
+                .mapToObj(i -> Byte.toString(ip[i]))
+                .collect(Collectors.joining(":"));
     }
 
     public static <T> T getRandomElement(List<T> list) {
