@@ -3,8 +3,8 @@ package ru.mit.spbau.antonpp.torrent.tracker;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import ru.mit.spbau.antonpp.torrent.commons.Util;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.serialization.FileSerializable;
 import ru.mit.spbau.antonpp.torrent.commons.serialization.SerializationException;
 import ru.mit.spbau.antonpp.torrent.tracker.exceptions.TrackerStartException;
@@ -31,7 +31,7 @@ public class TorrentTracker implements FileSerializable, Closeable {
     public static final int MAX_THREADS = 8;
     private static final long FIVE_MINUTES = 1000 * 60 * 5;
 
-    private ConcurrentHashMap<Integer, FileRecord> availableFiles = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Integer, TrackerFileRecord> availableFiles = new ConcurrentHashMap<>();
     private ConcurrentHashMap<SeedRecord, ClientRecord> activeClients = new ConcurrentHashMap<>();
     private AtomicInteger freeId = new AtomicInteger();
 
@@ -84,7 +84,7 @@ public class TorrentTracker implements FileSerializable, Closeable {
     @Override
     public void deserialize() {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(path.toFile()))) {
-            availableFiles = (ConcurrentHashMap<Integer, FileRecord>) os.readObject();
+            availableFiles = (ConcurrentHashMap<Integer, TrackerFileRecord>) os.readObject();
             activeClients = (ConcurrentHashMap<SeedRecord, ClientRecord>) os.readObject();
             freeId = (AtomicInteger) os.readObject();
         } catch (ClassNotFoundException | IOException e) {
@@ -100,7 +100,7 @@ public class TorrentTracker implements FileSerializable, Closeable {
         serialize();
     }
 
-    public List<FileRecord> getFiles() {
+    public List<TrackerFileRecord> getFiles() {
         return new ArrayList<>(availableFiles.values());
     }
 

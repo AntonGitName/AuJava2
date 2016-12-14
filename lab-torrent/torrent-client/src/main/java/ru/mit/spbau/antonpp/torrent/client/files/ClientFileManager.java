@@ -2,8 +2,8 @@ package ru.mit.spbau.antonpp.torrent.client.files;
 
 import lombok.val;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.FileManagerException;
-import ru.mit.spbau.antonpp.torrent.client.files.FileHolder.LocalFileRecord;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.client.files.FileHolder.ClientFileRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -41,7 +41,7 @@ public class ClientFileManager {
         }
     }
 
-    public synchronized void saveFile(Path source, FileRecord record) throws IOException {
+    public synchronized void saveFile(Path source, TrackerFileRecord record) throws IOException {
         files.put(record.getId(), FileHolder.create(source, filesLocation, record));
     }
 
@@ -63,7 +63,7 @@ public class ClientFileManager {
         throw new FileManagerException("No file with id=" + id);
     }
 
-    public synchronized void createEmpty(FileRecord record) throws IOException {
+    public synchronized void createEmpty(TrackerFileRecord record) throws IOException {
         files.put(record.getId(), FileHolder.createEmpty(filesLocation, record));
     }
 
@@ -88,7 +88,7 @@ public class ClientFileManager {
         return files.containsKey(id);
     }
 
-    public List<LocalFileRecord> getLocalRecords() {
+    public List<ClientFileRecord> getLocalRecords() {
         return files.values().stream().map(FileHolder::getRecord).collect(Collectors.toList());
     }
 }

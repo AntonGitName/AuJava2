@@ -13,5 +13,5 @@ import java.io.Serializable;
 @Builder
 public final class SeedRecord implements Serializable {
     private byte[] ip;
-    private short port;
+    private int port;
 }

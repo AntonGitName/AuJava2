@@ -2,7 +2,6 @@ package ru.mit.spbau.antonpp.torrent.client.uploader;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import ru.mit.spbau.antonpp.torrent.client.TorrentClient;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
 import ru.mit.spbau.antonpp.torrent.commons.network.AbstractPortListener;
 
@@ -17,11 +16,13 @@ import java.util.concurrent.ExecutorService;
 @Slf4j
 public class UploaderPortListener extends AbstractPortListener {
 
+    private static final int MAX_THREADS = 4;
+
     @NotNull
     private final ClientFileManager fileManager;
 
     public UploaderPortListener(@NotNull ServerSocket serverSocket, @NotNull ClientFileManager fileManager) {
-        super(serverSocket, TorrentClient.MAX_THREADS);
+        super(serverSocket, MAX_THREADS);
         this.fileManager = fileManager;
     }
 

@@ -5,10 +5,10 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import ru.mit.spbau.antonpp.torrent.client.requests.ClientRequester;
+import ru.mit.spbau.antonpp.torrent.client.requests.DownloadFileCallback;
 import ru.mit.spbau.antonpp.torrent.commons.Util;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.TrackerRequestCode;
 
@@ -88,7 +88,7 @@ public class TorrentClientTest {
     public void testUsesSavedInstance() throws Exception {
         TorrentClient client = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, updateCallback, CLIENT_WD1);
         assertTrue(client.fileManager.getAvailableFiles().isEmpty());
-        client.requestUploadFile(FILE_A1.toString());
+        client.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
         Thread.sleep(WAIT_THREADS_TIME);
         client.close();
 
@@ -109,7 +109,7 @@ public class TorrentClientTest {
     public void testRequestDownloadFile() throws Exception {
         oneSeed = true;
         TorrentClient client1 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, new StubCallback(), CLIENT_WD1);
-        client1.requestUploadFile(FILE_A1.toString());
+        client1.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
         int id = client1.fileManager.getAvailableFiles().iterator().next();
 
         // to make sure client1 is first, so we will give correct ip/port to client2
@@ -137,10 +137,10 @@ public class TorrentClientTest {
     public void testRequestDownloadFileMultipleSeed() throws Exception {
         oneSeed = false;
         TorrentClient client1 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, new StubCallback(), CLIENT_WD1);
-        client1.requestUploadFile(FILE_A1.toString());
+        client1.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
 
         TorrentClient client2 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT2, new StubCallback(), CLIENT_WD2);
-        client2.requestUploadFile(FILE_A1.toString());
+        client2.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
         int id = client1.fileManager.getAvailableFiles().iterator().next();
 
         Thread.sleep(WAIT_THREADS_TIME);
@@ -173,11 +173,11 @@ public class TorrentClientTest {
     public void requestFilesList() throws Exception {
         TorrentClient client1 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, updateCallback, CLIENT_WD1);
 
-        Map<Integer, FileRecord> result = client1.requestFilesList();
+        Map<Integer, TrackerFileRecord> result = client1.requestFilesList();
 
         assertEquals(1, result.size());
         assertTrue(result.containsKey(MockConnectionHandler.freeId));
-        FileRecord record = result.get(MockConnectionHandler.freeId);
+        TrackerFileRecord record = result.get(MockConnectionHandler.freeId);
         assertEquals(FILE_A1.getFileName().toString(), record.getName());
         assertEquals(Files.size(FILE_A1), record.getSize());
         client1.close();
@@ -186,13 +186,13 @@ public class TorrentClientTest {
     @Test
     public void requestUploadFile() throws Exception {
         TorrentClient client1 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, new StubCallback(), CLIENT_WD1);
-        client1.requestUploadFile(FILE_A1.toString());
+        client1.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
         int id = client1.fileManager.getAvailableFiles().iterator().next();
         assertEquals(MockConnectionHandler.freeId, id);
         client1.close();
     }
 
-    private static class DownloadCallback implements ClientRequester.DownloadFileCallback {
+    private static class DownloadCallback implements DownloadFileCallback {
 
         private final Path destination;
         private final Path original;

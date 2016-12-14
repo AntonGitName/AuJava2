@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
 import ru.mit.spbau.antonpp.torrent.commons.Util;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.network.AbstractConnectionHandler;
 import ru.mit.spbau.antonpp.torrent.commons.network.ConnectionIOException;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
@@ -31,14 +31,14 @@ import java.util.stream.Collectors;
 public class TrackerConnectionHandler extends AbstractConnectionHandler {
 
     @NotNull
-    private final ConcurrentHashMap<Integer, FileRecord> availableFiles;
+    private final ConcurrentHashMap<Integer, TrackerFileRecord> availableFiles;
     @NotNull
     private final ConcurrentHashMap<SeedRecord, ClientRecord> activeClients;
     @NotNull
     private final AtomicInteger freeId;
 
     public TrackerConnectionHandler(Socket clientSocket,
-                                    @NotNull ConcurrentHashMap<Integer, FileRecord> availableFiles,
+                                    @NotNull ConcurrentHashMap<Integer, TrackerFileRecord> availableFiles,
                                     @NotNull ConcurrentHashMap<SeedRecord, ClientRecord> activeClients,
                                     @NotNull AtomicInteger freeId) {
         super(clientSocket);
@@ -129,8 +129,8 @@ public class TrackerConnectionHandler extends AbstractConnectionHandler {
         log.debug("received request: UPLOAD {} {}", name, size);
         while (true) {
             val id = freeId.getAndIncrement();
-            final FileRecord fileRecord = FileRecord.builder().name(name).size(size).id(id).build();
-            if (availableFiles.putIfAbsent(id, fileRecord) == null) {
+            final TrackerFileRecord trackerFileRecord = TrackerFileRecord.builder().name(name).size(size).id(id).build();
+            if (availableFiles.putIfAbsent(id, trackerFileRecord) == null) {
                 dos.writeInt(id);
                 break;
             }

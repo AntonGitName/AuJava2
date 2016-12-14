@@ -8,8 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.TorrentClientStartException;
-import ru.mit.spbau.antonpp.torrent.client.requests.ClientRequester.DownloadFileCallback;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.client.requests.DownloadFileCallback;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,7 +22,7 @@ import java.util.Scanner;
  * @since 11.12.16
  */
 @Slf4j
-public class Application {
+public class ConsoleApplication {
 
     private static final String CMD_HELP = "help";
     private static final String CMD_EXIT = "exit";
@@ -46,7 +46,7 @@ public class Application {
     @Parameter(names = {"-h", "--help"}, description = "Print this help message and exit", help = true)
     private boolean help;
 
-    private Application(String[] args) throws IOException {
+    private ConsoleApplication(String[] args) throws IOException {
         jc = new JCommander(this);
 
         try {
@@ -82,7 +82,7 @@ public class Application {
     }
 
     public static void main(String[] args) throws IOException {
-        new Application(args);
+        new ConsoleApplication(args);
     }
 
     private static void printToLogAndSout(String msg, Throwable e) {
@@ -157,7 +157,7 @@ public class Application {
         val records = torrentClient.requestLocalFiles();
         System.out.printf("%20s\t%6s\t%10s\t%10s\t%s\n", "Name", "ID", "Downloaded", "Full size", "Percent");
         records.forEach(record -> {
-                    final FileRecord realFile = record.getRealFile();
+            final TrackerFileRecord realFile = record.getRealFile();
                     System.out.printf(fmt, realFile.getName(), realFile.getId(), record.getDownloadedSize(),
                             realFile.getSize(), 100.0 * record.getRation());
                 }
@@ -165,7 +165,7 @@ public class Application {
     }
 
     private void handleListFiles() {
-        final Map<Integer, FileRecord> records;
+        final Map<Integer, TrackerFileRecord> records;
         final String fmt = "%20s\t%6d\t%d\n";
         try {
             records = torrentClient.requestFilesList();
@@ -180,10 +180,11 @@ public class Application {
     }
 
     private void handleUploadFile(String[] args) {
-        final FileRecord record;
+        final TrackerFileRecord record;
         final String pathToFile = args[1];
+        final String name = args[2];
         try {
-            record = torrentClient.requestUploadFile(pathToFile);
+            record = torrentClient.requestUploadFile(pathToFile, name);
         } catch (RequestFailedException e) {
             printToLogAndSout("Failed to upload file.", e);
             return;
