@@ -53,7 +53,7 @@ public final class WorkingDir extends AbstractRevision {
     @Override
     @NotNull
     public Set<Path> listFiles() {
-        return new HashSet<>(Utils.listFilesRecursivelyExceptInternls(root));
+        return new HashSet<>(Utils.listFilesRecursivelyExceptInternals(root));
     }
 
     @Override

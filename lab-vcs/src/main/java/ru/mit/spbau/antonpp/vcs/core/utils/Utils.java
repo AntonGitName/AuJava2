@@ -30,7 +30,7 @@ public class Utils {
         return dateFormat.format(date);
     }
 
-    public static List<Path> listFilesRecursivelyExceptInternls(Path root) {
+    public static List<Path> listFilesRecursivelyExceptInternals(Path root) {
         return listFilesRecursively(root, Arrays.asList(getInternals(root), getAppLog(root), getAppJar(root)));
     }
 

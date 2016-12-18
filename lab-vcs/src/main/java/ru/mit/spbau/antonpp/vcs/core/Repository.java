@@ -354,14 +354,16 @@ public class Repository implements FileSerializable {
     }
 
     /**
-     * Never guess what it does. It returns log records!
+     * Builds commits tree and uses it to filter commit messages. Returns
+     * logs that were created in any direct/indirect parent commit.
      *
      * @return all records from log file in order from newest to oldest.
-     * @throws SerializationException  if log file could not be loaded.
+     * @throws SerializationException  if log file could not be loaded or
+     * commits tree could not be read.
      */
     public List<LogRecord> getLogRecords() throws SerializationException {
         final RepositoryLog repositoryLog = loadLog();
-        return repositoryLog.getLogRecords();
+        return repositoryLog.getLogRecords(root, headHash);
     }
 
     /**
@@ -494,6 +496,11 @@ public class Repository implements FileSerializable {
         stage.checkoutRevision(head);
         stage.setBranch(getCommitBranch(fullHash));
         saveStage(stage);
+        try {
+            clean();
+        } catch (IOException e) {
+            throw new CheckoutException("Could not clean working dir after checkout", e);
+        }
     }
 
     /**

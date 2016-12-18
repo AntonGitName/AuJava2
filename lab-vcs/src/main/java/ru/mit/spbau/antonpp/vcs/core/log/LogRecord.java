@@ -1,9 +1,7 @@
 package ru.mit.spbau.antonpp.vcs.core.log;
 
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.Data;
 
 import java.io.Serializable;
 
@@ -13,27 +11,14 @@ import java.io.Serializable;
  * @author Anton Mordberg
  * @since 27.10.16
  */
-@ToString
+@Data
+@Builder
 public class LogRecord implements Serializable {
 
-    @Getter @Setter
     private String message;
-    @Getter @Setter
     private String author;
-    @Getter @Setter
     private String time;
-    @Getter @Setter
     private String hash;
-
-    public LogRecord() {
-    }
-
-    @Builder
-    public LogRecord(String author, String time, String message) {
-        this.author = author;
-        this.time = time;
-        this.message = message;
-    }
 
     public String getShortHash() {
         return getHash().substring(0, 6);
