@@ -32,3 +32,14 @@ subprojects {
     }
 }
 
+project(':lab-ftp:ftp-client') {
+    dependencies {
+        compile project(':lab-ftp:ftp-commons')
+    }
+}
+
+project(':lab-ftp:ftp-server') {
+    dependencies {
+        compile project(':lab-ftp:ftp-commons')
+    }
+}
