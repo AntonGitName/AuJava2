@@ -1,0 +1,39 @@
+//create a single Jar with all dependencies
+jar {
+    from {
+        configurations.compile.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    manifest {
+        attributes 'Main-Class': 'ru.mit.spbau.antonpp.vcs.Application'
+    }
+}
+
+task createTargetDir {
+    mkdir rootProject.targetDir
+}
+
+task deploy(dependsOn: jar, type: Copy) {
+    mkdir rootProject.targetDir
+    from jar.archivePath
+    into rootProject.targetDir
+    rename "$project.name(.*)jar", "$project.name" + '.jar'
+    println "Created jar `$projectDir$File.separator$rootProject.targetDir$File.separator$project.name" + ".jar`"
+}
+
+clean.doFirst {
+    delete rootProject.targetDir
+}
+
+dependencies {
+
+    testCompile group: 'commons-io', name: 'commons-io', version: '2.5'
+
+    // lombok annotations
+    compileOnly "org.projectlombok:lombok:1.16.10"
+
+    // cli
+    compile group: 'com.beust', name: 'jcommander', version: '1.48'
+
+}

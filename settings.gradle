@@ -1,4 +1,4 @@
 rootProject.name = 'AuJava2'
 
+include 'lab-vcs'
 include 'lab-ftp:ftp-commons', 'lab-ftp:ftp-client', 'lab-ftp:ftp-server'
-

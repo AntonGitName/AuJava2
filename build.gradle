@@ -5,6 +5,13 @@ allprojects {
     version = '1.0'
 }
 
+project.ext {
+    targetDir = 'target'
+}
+
+task deploy {
+    dependsOn ':lab-vcs:deploy'
+}
 
 subprojects {
     sourceCompatibility = 1.8
