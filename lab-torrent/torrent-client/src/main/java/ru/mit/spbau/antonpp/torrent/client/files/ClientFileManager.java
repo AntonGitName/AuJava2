@@ -69,7 +69,7 @@ public class ClientFileManager {
 
     public synchronized void updateFilePart(int id, int part, byte[] data) throws IOException {
         val holder = files.get(id);
-        holder.addPart(part, data);
+        holder.addPart(part, data, data.length);
         holder.serialize();
     }
 
