@@ -23,5 +23,6 @@ public class ProgressPanel extends JPanel {
 
     public void updateDownloadedSize(int newSize) {
         progressBar.setValue(newSize);
+        progressBar.setString(String.format("%.2f%%", progressBar.getPercentComplete()));
     }
 }

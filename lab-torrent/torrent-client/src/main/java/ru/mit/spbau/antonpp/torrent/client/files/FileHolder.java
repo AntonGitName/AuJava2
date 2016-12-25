@@ -12,7 +12,6 @@ import ru.mit.spbau.antonpp.torrent.commons.serialization.SerializationException
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,8 +24,8 @@ import java.util.stream.Collectors;
  */
 public final class FileHolder implements FileSerializable {
 
-    public static final String FILE_PREFIX = "file_";
     public static final int BLOCK_SIZE = 4 * 1024;
+    static final String FILE_PREFIX = "file_";
     private Map<Integer, Integer> blocks = new HashMap<>();
     @Getter
     private ClientFileRecord record;
@@ -44,11 +43,18 @@ public final class FileHolder implements FileSerializable {
 
     synchronized static FileHolder create(Path source, Path workingDir, TrackerFileRecord record) throws IOException {
         val holder = createEmpty(workingDir, record);
-        val allBytes = Files.readAllBytes(source);
-        for (int i = 0; i < allBytes.length; i += BLOCK_SIZE) {
-            val data = Arrays.copyOfRange(allBytes, i, Math.min(i + BLOCK_SIZE, allBytes.length));
-            val part = i / BLOCK_SIZE;
-            holder.addPart(part, data);
+        val buffer = new byte[BLOCK_SIZE];
+        int part = 0;
+        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(source.toFile()))) {
+            for (; ; ) {
+                int bytesReaded;
+                bytesReaded = bis.read(buffer);
+                if (bytesReaded == -1) {
+                    break;
+                }
+                holder.addPart(part, buffer, bytesReaded);
+                ++part;
+            }
         }
         holder.serialize();
         return holder;
@@ -102,14 +108,16 @@ public final class FileHolder implements FileSerializable {
         return blocks.keySet();
     }
 
-    synchronized void addPart(int num, byte[] data) throws IOException {
+    synchronized void addPart(int num, byte[] data, int length) throws IOException {
         if (hasBlock(num)) {
             throw new InvalidBlockException("Block is already saved");
         }
+        if (data.length != length) {
+            data = Arrays.copyOf(data, length);
+        }
         Files.write(getPartPath(num), data);
-        record.addSize(data.length);
-        blocks.put(num, data.length);
-        serialize();
+        record.addSize(length);
+        blocks.put(num, length);
     }
 
     private boolean hasBlock(int num) {
@@ -126,9 +134,10 @@ public final class FileHolder implements FileSerializable {
 
     synchronized void copyFile(Path destination) throws IOException {
         val parts = this.blocks.keySet().stream().sorted().collect(Collectors.toList());
-        Files.write(destination, Files.readAllBytes(getPartPath(0)));
-        for (int num = 1; num < parts.size(); num++) {
-            Files.write(destination, Files.readAllBytes(getPartPath(num)), StandardOpenOption.APPEND);
+        try (OutputStream bos = new FileOutputStream(destination.toFile())) {
+            for (int num = 0; num < parts.size(); num++) {
+                bos.write(Files.readAllBytes(getPartPath(num)));
+            }
         }
     }
 
@@ -138,7 +147,7 @@ public final class FileHolder implements FileSerializable {
         private final TrackerFileRecord realFile;
         private long downloadedSize;
 
-        public void addSize(long sz) {
+        void addSize(long sz) {
             downloadedSize += sz;
         }
 

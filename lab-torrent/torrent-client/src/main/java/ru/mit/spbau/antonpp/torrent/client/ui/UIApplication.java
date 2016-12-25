@@ -23,6 +23,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static java.awt.event.InputEvent.SHIFT_DOWN_MASK;
 
@@ -41,13 +43,13 @@ public class UIApplication extends JFrame {
     private final static String ERROR_TIP = "<html>Please check that:<br>" +
             "   1. Tracker is running.<br>" +
             "   2. Client port is not used by any other application.</html>";
-
+    private final ExecutorService uploader = Executors.newSingleThreadExecutor();
     @Getter
     private TorrentClient client;
-
     private FileViewTableModel tableModel;
-    private volatile boolean failed = false;
+    private volatile boolean clientUsed = false;
     private Path workingDir;
+    private InfiniteProgressPanel uploadProgress;
 
     public UIApplication() {
         super("Torrent Client v-1.0");
@@ -84,7 +86,7 @@ public class UIApplication extends JFrame {
     }
 
     private void exitOnUnrecoverableError(String msg, Throwable e) {
-        failed = true;
+        clientUsed = true;
         log.error(msg, e);
         final JComponent[] message = new JComponent[]{
                 new JLabel("Problem:"),
@@ -177,21 +179,32 @@ public class UIApplication extends JFrame {
 
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             val file = fc.getSelectedFile();
-            try {
-                client.requestUploadFile(file.getAbsolutePath(), file.getName());
-                updateFilesView();
-            } catch (RequestFailedException e) {
-                handleRecoverableError("Could not upload file.", e);
-            }
+            uploadProgress.start();
+            clientUsed = true;
+            uploader.submit(() -> {
+                try {
+                    client.requestUploadFile(file.getAbsolutePath(), file.getName());
+                    SwingUtilities.invokeLater(this::onUploadFinish);
+                } catch (RequestFailedException e) {
+                    SwingUtilities.invokeLater(() -> handleRecoverableError("Could not upload file.", e));
+                }
+            });
         }
     }
 
+    private void onUploadFinish() {
+        clientUsed = false;
+        uploadProgress.stop();
+        updateFilesView();
+    }
+
     private void quit() {
+        uploader.shutdownNow();
         dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
     }
 
     private void updateFilesView() {
-        if (!failed) {
+        if (!clientUsed) {
             final Map<Integer, TrackerFileRecord> allFiles;
             final List<ClientFileRecord> localFiles;
             try {
@@ -207,6 +220,10 @@ public class UIApplication extends JFrame {
     }
 
     private void createFilesView() {
+        uploadProgress = new InfiniteProgressPanel("Uploading a file. Please wait...");
+        setGlassPane(uploadProgress);
+
+
         tableModel = new FileViewTableModel(client);
 
         val table = new JTable(tableModel);
@@ -223,6 +240,8 @@ public class UIApplication extends JFrame {
         add(scrollPane, BorderLayout.CENTER);
 
         updateFilesView();
+
+        table.setRowHeight(table.getRowHeight() * 2);
 
         val updateTimer = new Timer(1000, e -> updateFilesView());
         updateTimer.setInitialDelay(2000);

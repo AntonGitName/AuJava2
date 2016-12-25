@@ -100,9 +100,10 @@ public class DownloadFileTask implements Runnable {
     private void downloadParts(int id, Map<Integer, SeedRecord> sourcesMap, ClientFileManager fileManager) throws RequestFailedException {
         // fuck lombok + idea + java 1.8
         // it seems that val does not work when it is declared in lambda scope
-        val partFutures = sourcesMap.entrySet().stream().limit(MAX_THREADS_PARTS).map(x -> requester.getUploadPartsExecutor().submit(() -> {
-            final int part = x.getKey();
-            final SeedRecord seed = x.getValue();
+        val parts = new ArrayList<Integer>(sourcesMap.keySet());
+        Collections.shuffle(parts);
+        val partFutures = parts.stream().limit(MAX_THREADS_PARTS).map(part -> requester.getUploadPartsExecutor().submit(() -> {
+            final SeedRecord seed = sourcesMap.get(part);
             try {
                 final byte[] data = requestFilePart(id, part, seed);
                 fileManager.updateFilePart(id, part, data);

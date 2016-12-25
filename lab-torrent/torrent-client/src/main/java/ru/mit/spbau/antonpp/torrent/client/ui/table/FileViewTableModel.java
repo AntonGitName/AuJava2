@@ -3,6 +3,7 @@ package ru.mit.spbau.antonpp.torrent.client.ui.table;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import ru.mit.spbau.antonpp.torrent.client.TorrentClient;
+import ru.mit.spbau.antonpp.torrent.client.exceptions.FileManagerException;
 import ru.mit.spbau.antonpp.torrent.client.files.FileHolder;
 import ru.mit.spbau.antonpp.torrent.client.files.FileHolder.ClientFileRecord;
 import ru.mit.spbau.antonpp.torrent.client.ui.data.Row;
@@ -51,22 +52,26 @@ public class FileViewTableModel extends AbstractTableModel {
         val id = record.getRealFile().getId();
         val opt = findRecord(id);
         val downloadedSize = (int) record.getDownloadedSize();
-        if (opt.isPresent()) {
-            val row = opt.get();
-            row.setDownloadedSize(downloadedSize);
-            row.getProgressPanel().updateDownloadedSize(downloadedSize);
-            row.getBlockPanel().setBlocks(client.requestFilePartsList(id));
-        } else {
-            val real = record.getRealFile();
-            val fullSize = (int) real.getSize();
-            records.add(Row.builder()
-                    .id(id)
-                    .downloadedSize(downloadedSize)
-                    .fullSize(real.getSize())
-                    .name(real.getName())
-                    .progressPanel(createProgress(fullSize, downloadedSize))
-                    .blockPanel(createBlocks(fullSize, client.requestFilePartsList(id)))
-                    .build());
+        try {
+            if (opt.isPresent()) {
+                val row = opt.get();
+                row.setDownloadedSize(downloadedSize);
+                row.getProgressPanel().updateDownloadedSize(downloadedSize);
+                row.getBlockPanel().setBlocks(client.requestFilePartsList(id));
+            } else {
+                val real = record.getRealFile();
+                val fullSize = (int) real.getSize();
+                records.add(Row.builder()
+                        .id(id)
+                        .downloadedSize(downloadedSize)
+                        .fullSize(real.getSize())
+                        .name(real.getName())
+                        .progressPanel(createProgress(fullSize, downloadedSize))
+                        .blockPanel(createBlocks(fullSize, client.requestFilePartsList(id)))
+                        .build());
+            }
+        } catch (FileManagerException e) {
+            log.error("Failed to update file download progress", e);
         }
     }
 
@@ -149,7 +154,11 @@ public class FileViewTableModel extends AbstractTableModel {
         val opt = findRecord(id);
         if (opt.isPresent()) {
             opt.get().setDownloadedSize(downloadedSize);
-            opt.get().getBlockPanel().setBlocks(client.requestFilePartsList(id));
+            try {
+                opt.get().getBlockPanel().setBlocks(client.requestFilePartsList(id));
+            } catch (FileManagerException e) {
+                log.error("Could not retrieve file blocks.", e);
+            }
             opt.get().getProgressPanel().updateDownloadedSize((int) downloadedSize);
         } else {
             log.error("Received update request for unknown file");

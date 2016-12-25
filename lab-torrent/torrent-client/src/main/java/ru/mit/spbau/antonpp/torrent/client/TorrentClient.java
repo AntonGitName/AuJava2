@@ -6,6 +6,7 @@ import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import ru.mit.spbau.antonpp.torrent.client.exceptions.FileManagerException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.TorrentClientStartException;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
@@ -101,7 +102,7 @@ public final class TorrentClient implements Closeable {
 
     }
 
-    public Set<Integer> requestFilePartsList(int id) {
+    public Set<Integer> requestFilePartsList(int id) throws FileManagerException {
         return fileManager.getAvailableParts(id);
     }
 
