@@ -56,7 +56,7 @@ public class ClientFileManager {
         return Collections.unmodifiableSet(files.keySet());
     }
 
-    public synchronized Set<Integer> getAvailableParts(int id) {
+    public synchronized Set<Integer> getAvailableParts(int id) throws FileManagerException {
         if (hasFile(id)) {
             return Collections.unmodifiableSet(files.get(id).getAvailableParts());
         }
@@ -73,7 +73,7 @@ public class ClientFileManager {
         holder.serialize();
     }
 
-    public synchronized long getSize(int id) {
+    public synchronized long getSize(int id) throws FileManagerException {
         if (hasFile(id)) {
             return files.get(id).getSize();
         }
