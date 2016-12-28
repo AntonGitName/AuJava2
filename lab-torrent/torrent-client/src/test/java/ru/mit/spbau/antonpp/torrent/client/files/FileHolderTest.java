@@ -5,7 +5,7 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -49,7 +49,7 @@ public class FileHolderTest {
                 fos.write(chunk);
             }
         }
-        final FileRecord record = FileRecord.builder().id(1).size(HUGE_FILE_SIZE).name(name).build();
+        final TrackerFileRecord record = TrackerFileRecord.builder().id(1).size(HUGE_FILE_SIZE).name(name).build();
 
         ScheduledExecutorService memoryChecker = Executors.newSingleThreadScheduledExecutor();
         final boolean[] memoryOverused = {false};

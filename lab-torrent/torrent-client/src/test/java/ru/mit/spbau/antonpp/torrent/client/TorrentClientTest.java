@@ -7,9 +7,9 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import ru.mit.spbau.antonpp.torrent.client.requests.ClientRequester;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.client.requests.DownloadFileCallback;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.TrackerRequestCode;
 
@@ -93,7 +93,7 @@ public class TorrentClientTest {
     public void testUsesSavedInstance() throws Exception {
         TorrentClient client = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, updateCallback, clientWd1);
         assertTrue(client.fileManager.getAvailableFiles().isEmpty());
-        client.requestUploadFile(FILE_A1.toString());
+        client.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
         Thread.sleep(WAIT_THREADS_TIME);
         client.close();
 
@@ -114,7 +114,7 @@ public class TorrentClientTest {
     public void testRequestDownloadFile() throws Exception {
         oneSeed = true;
         TorrentClient client1 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, updateCallback, clientWd1);
-        client1.requestUploadFile(FILE_A1.toString());
+        client1.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
         int id = client1.fileManager.getAvailableFiles().iterator().next();
 
         // to make sure client1 is first, so we will give correct ip/port to client2
@@ -141,10 +141,10 @@ public class TorrentClientTest {
     public void testRequestDownloadFileMultipleSeed() throws Exception {
         oneSeed = false;
         TorrentClient client1 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, updateCallback, clientWd1);
-        client1.requestUploadFile(FILE_A1.toString());
+        client1.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
 
         TorrentClient client2 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT2, updateCallback, clientWd2);
-        client2.requestUploadFile(FILE_A1.toString());
+        client2.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
         int id = client1.fileManager.getAvailableFiles().iterator().next();
 
         Thread.sleep(WAIT_THREADS_TIME);
@@ -176,11 +176,11 @@ public class TorrentClientTest {
     public void requestFilesList() throws Exception {
         TorrentClient client1 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, updateCallback, clientWd1);
 
-        Map<Integer, FileRecord> result = client1.requestFilesList();
+        Map<Integer, TrackerFileRecord> result = client1.requestFilesList();
 
         assertEquals(1, result.size());
         assertTrue(result.containsKey(MockConnectionHandler.freeId));
-        FileRecord record = result.get(MockConnectionHandler.freeId);
+        TrackerFileRecord record = result.get(MockConnectionHandler.freeId);
         assertEquals(FILE_A1.getFileName().toString(), record.getName());
         assertEquals(Files.size(FILE_A1), record.getSize());
         client1.close();
@@ -189,13 +189,13 @@ public class TorrentClientTest {
     @Test
     public void requestUploadFile() throws Exception {
         TorrentClient client1 = new TorrentClient(HOST, TEST_PORT_TRACKER, TEST_PORT1, updateCallback, clientWd1);
-        client1.requestUploadFile(FILE_A1.toString());
+        client1.requestUploadFile(FILE_A1.toString(), FILE_A1.toString());
         int id = client1.fileManager.getAvailableFiles().iterator().next();
         assertEquals(MockConnectionHandler.freeId, id);
         client1.close();
     }
 
-    private static class DownloadCallback implements ClientRequester.DownloadFileCallback {
+    private static class DownloadCallback implements DownloadFileCallback {
 
         private final Path original;
         private boolean ready = false;
@@ -228,19 +228,19 @@ public class TorrentClientTest {
 
         }
 
-        public boolean isReady() {
+        boolean isReady() {
             return ready;
         }
     }
 
     private static class MockConnectionHandler implements Runnable {
 
-        public final static List<SeedRecord> SEEDS = new ArrayList<>(2);
-        public static int freeId = 666;
+        final static List<SeedRecord> SEEDS = new ArrayList<>(2);
+        static int freeId = 666;
         private final Socket clientSocket;
         private boolean isConnected;
 
-        public MockConnectionHandler(Socket clientSocket) {
+        MockConnectionHandler(Socket clientSocket) {
             this.clientSocket = clientSocket;
         }
 
@@ -343,7 +343,7 @@ public class TorrentClientTest {
             failed = true;
         }
 
-        public boolean isFailed() {
+        boolean isFailed() {
             return failed;
         }
     }
@@ -356,7 +356,7 @@ public class TorrentClientTest {
 
         private boolean isRunning = true;
 
-        public MockTracker() throws IOException {
+        MockTracker() throws IOException {
             serverSocket = new ServerSocket(TEST_PORT_TRACKER);
             handleService = Executors.newFixedThreadPool(3);
         }
@@ -373,7 +373,7 @@ public class TorrentClientTest {
             }
         }
 
-        public void stop() throws IOException {
+        void stop() throws IOException {
             isRunning = false;
             serverSocket.close();
             handleService.shutdownNow();
