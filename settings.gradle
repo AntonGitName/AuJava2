@@ -1,4 +1,4 @@
 rootProject.name = 'AuJava2'
 
 include 'lab-torrent:torrent-commons', 'lab-torrent:torrent-client', 'lab-torrent:torrent-tracker'
-
+include 'lab-torrent:torrent-client:console-client'

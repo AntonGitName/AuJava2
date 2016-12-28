@@ -1,4 +1,4 @@
-package ru.mit.spbau.antonpp.torrent.client;
+package ru.mit.spbau.antonpp.torrent.client.console;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -6,6 +6,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import ru.mit.spbau.antonpp.torrent.client.TorrentClient;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.TorrentClientStartException;
 import ru.mit.spbau.antonpp.torrent.client.requests.ClientRequester.DownloadFileCallback;
