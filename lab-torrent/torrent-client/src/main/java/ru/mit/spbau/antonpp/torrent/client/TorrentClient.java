@@ -6,16 +6,16 @@ import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import ru.mit.spbau.antonpp.torrent.client.exceptions.FileManagerException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.RequestFailedException;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.TorrentClientStartException;
 import ru.mit.spbau.antonpp.torrent.client.files.ClientFileManager;
 import ru.mit.spbau.antonpp.torrent.client.files.FileHolder;
 import ru.mit.spbau.antonpp.torrent.client.requests.ClientRequester;
-import ru.mit.spbau.antonpp.torrent.client.requests.ClientRequester.DownloadFileCallback;
 import ru.mit.spbau.antonpp.torrent.client.requests.ClientStatusUpdater;
+import ru.mit.spbau.antonpp.torrent.client.requests.DownloadFileCallback;
 import ru.mit.spbau.antonpp.torrent.client.uploader.UploaderPortListener;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
-import ru.mit.spbau.antonpp.torrent.commons.serialization.SerializationException;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,7 +38,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public final class TorrentClient implements Closeable {
 
-    public static final int MAX_THREADS = 4;
     final ClientFileManager fileManager;
     private final ListeningScheduledExecutorService updateExecutor =
             MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
@@ -46,22 +46,30 @@ public final class TorrentClient implements Closeable {
     private final ClientRequester requester;
     private final ClientStatusUpdater updater;
 
-    public TorrentClient(String host, short trackerPort, short clientPort, FutureCallback<Object> updateCallback, Path dir)
+    public TorrentClient(String host, int trackerPort, int clientPort, FutureCallback<Object> updateCallback, Path dir)
             throws TorrentClientStartException {
+
+        if (!checkPort(trackerPort) || !checkPort(clientPort)) {
+            throw new TorrentClientStartException("Bad port value");
+        }
 
         final ServerSocket serverSocket;
         try {
             fileManager = new ClientFileManager(dir);
             serverSocket = new ServerSocket(clientPort);
-        } catch (IOException | SerializationException e) {
+        } catch (IOException | RuntimeException e) {
             throw new TorrentClientStartException(e);
         }
         portListener = new UploaderPortListener(serverSocket, fileManager);
         listenService.execute(portListener);
         updater = new ClientStatusUpdater(host, trackerPort, fileManager, clientPort);
-        val future = updateExecutor.scheduleAtFixedRate(updater, 1, 5 * 60, TimeUnit.SECONDS);
+        val future = updateExecutor.scheduleAtFixedRate(updater, 0, 5, TimeUnit.MINUTES);
         Futures.addCallback(future, updateCallback);
         requester = new ClientRequester(host, trackerPort);
+    }
+
+    private static boolean checkPort(int port) {
+        return (port >= 0 && port <= 65535);
     }
 
     @Override
@@ -77,14 +85,14 @@ public final class TorrentClient implements Closeable {
         requester.requestDownloadFile(id, fileManager, new SaveFileCallback(callback, Paths.get(destination)));
     }
 
-    public Map<Integer, FileRecord> requestFilesList() throws RequestFailedException {
+    public Map<Integer, TrackerFileRecord> requestFilesList() throws RequestFailedException {
         return requester.requestFilesList();
     }
 
-    public FileRecord requestUploadFile(String pathToFile) throws RequestFailedException {
+    public TrackerFileRecord requestUploadFile(String pathToFile, String name) throws RequestFailedException {
         val path = Paths.get(pathToFile);
         try {
-            val record = requester.requestUploadFile(path.getFileName().toString(), Files.size(path));
+            val record = requester.requestUploadFile(name, Files.size(path));
             fileManager.saveFile(path, record);
             updateExecutor.submit(updater).get();
             return record;
@@ -94,7 +102,11 @@ public final class TorrentClient implements Closeable {
 
     }
 
-    public List<FileHolder.LocalFileRecord> requestLocalFiles() {
+    public Set<Integer> requestFilePartsList(int id) throws FileManagerException {
+        return fileManager.getAvailableParts(id);
+    }
+
+    public List<FileHolder.ClientFileRecord> requestLocalFiles() {
         return fileManager.getLocalRecords();
     }
 

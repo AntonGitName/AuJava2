@@ -4,8 +4,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import ru.mit.spbau.antonpp.torrent.commons.Util;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.data.SeedRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.CommonRequestCode;
 import ru.mit.spbau.antonpp.torrent.commons.protocol.TrackerRequestCode;
 
@@ -32,21 +32,21 @@ import static org.junit.Assert.*;
  */
 public class TorrentTrackerTest {
 
-    static final short TEST_PORT_TRACKER = (short) 8081;
-    private static final short TEST_PORT1 = (short) 31001;
-    private static final short TEST_PORT2 = (short) 31002;
-    private static final short TEST_PORT3 = (short) 31003;
+    static final short TEST_PORT_TRACKER = (int) 8081;
+    private static final int TEST_PORT1 = (int) 31001;
+    private static final int TEST_PORT2 = (int) 31002;
+    private static final int TEST_PORT3 = (int) 31003;
     private static final Path TEST_DIR = Paths.get("build/test");
     private static final Path TEST_TRACKER_PATH = TEST_DIR.resolve("tracker");
     private static final String HOST = "localhost";
 
     private static final int THREADS = 4;
 
-    private static final FileRecord RECORD1 = FileRecord.builder().name("1").size(1000).build();
-    private static final FileRecord RECORD2 = FileRecord.builder().name("2").size(2000).build();
-    private static final FileRecord RECORD3 = FileRecord.builder().name("1").size(3000).build();
-    private static final List<FileRecord> RECORDS = Arrays.asList(RECORD1, RECORD2, RECORD3);
-    private static final List<Short> PORTS = Arrays.asList(TEST_PORT1, TEST_PORT2, TEST_PORT3);
+    private static final TrackerFileRecord RECORD1 = TrackerFileRecord.builder().name("1").size(1000).build();
+    private static final TrackerFileRecord RECORD2 = TrackerFileRecord.builder().name("2").size(2000).build();
+    private static final TrackerFileRecord RECORD3 = TrackerFileRecord.builder().name("1").size(3000).build();
+    private static final List<TrackerFileRecord> RECORDS = Arrays.asList(RECORD1, RECORD2, RECORD3);
+    private static final List<Integer> PORTS = Arrays.asList(TEST_PORT1, TEST_PORT2, TEST_PORT3);
     private static final Random RND = new Random();
     private TorrentTracker tracker;
 
@@ -117,7 +117,7 @@ public class TorrentTrackerTest {
         MockClient.sendUpdate(TEST_PORT3, new ArrayList<>(files3));
 
         for (int i = 0; i < nTests; ++i) {
-            List<Short> seedRecords = MockClient.sendSources(i).stream().map(SeedRecord::getPort).collect(Collectors.toList());
+            List<Integer> seedRecords = MockClient.sendSources(i).stream().map(SeedRecord::getPort).collect(Collectors.toList());
             assertEquals(files1.contains(i), seedRecords.contains(TEST_PORT1));
             assertEquals(files2.contains(i), seedRecords.contains(TEST_PORT2));
             assertEquals(files3.contains(i), seedRecords.contains(TEST_PORT3));
@@ -134,7 +134,7 @@ public class TorrentTrackerTest {
         MockClient.sendUpdate(TEST_PORT2, Arrays.asList(id1, id2, id3));
         MockClient.sendUpdate(TEST_PORT3, Collections.singletonList(id3));
 
-        List<Short> result;
+        List<Integer> result;
 
         result = MockClient.sendSources(id1).stream().map(SeedRecord::getPort).collect(Collectors.toList());
         assertEquals(2, result.size());
@@ -158,7 +158,7 @@ public class TorrentTrackerTest {
         int id2 = MockClient.sendUpload(RECORD2);
         int id3 = MockClient.sendUpload(RECORD3);
 
-        Map<Integer, FileRecord> result = MockClient.sendList();
+        Map<Integer, TrackerFileRecord> result = MockClient.sendList();
 
         assertEquals(RECORD1, result.get(id1));
         assertEquals(RECORD2, result.get(id2));
@@ -192,7 +192,7 @@ public class TorrentTrackerTest {
     public void testListConcurrent() throws IOException {
         int nTests = 1024;
         concurrentUpload(nTests);
-        Map<Integer, FileRecord> result = MockClient.sendList();
+        Map<Integer, TrackerFileRecord> result = MockClient.sendList();
         assertEquals(nTests, result.size());
         for (int i = 0; i < nTests; ++i) {
             assertTrue(result.containsKey(i));
@@ -256,15 +256,15 @@ public class TorrentTrackerTest {
             return result;
         }
 
-        public static Map<Integer, FileRecord> sendList() throws IOException {
+        public static Map<Integer, TrackerFileRecord> sendList() throws IOException {
             init();
 
             outputStream.writeByte(TrackerRequestCode.RQ_LIST);
-            Map<Integer, FileRecord> result = new HashMap<>();
+            Map<Integer, TrackerFileRecord> result = new HashMap<>();
             int numFiles = inputStream.readInt();
             for (int i = 0; i < numFiles; ++i) {
                 int id = inputStream.readInt();
-                result.put(id, FileRecord.builder()
+                result.put(id, TrackerFileRecord.builder()
                         .name(inputStream.readUTF())
                         .size(inputStream.readLong())
                         .build());
@@ -294,7 +294,7 @@ public class TorrentTrackerTest {
             return result;
         }
 
-        public static int sendUpload(FileRecord fr) throws IOException {
+        public static int sendUpload(TrackerFileRecord fr) throws IOException {
             return sendUpload(fr.getName(), fr.getSize());
         }
 

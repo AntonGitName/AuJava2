@@ -73,7 +73,7 @@ public class Application {
         log.error(msg, e);
         System.out.println("ERROR");
         System.out.println("Here is an exception message (check logs for more information):");
-        System.out.println(msg);
+        System.out.println(e);
     }
 
     private void run() {

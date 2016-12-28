@@ -1,0 +1,17 @@
+task deploy(type: Copy) {
+    dependsOn ':lab-torrent:torrent-client:ui-client:jar',
+            ':lab-torrent:torrent-tracker:jar'
+    ext.projectNames = ['ui-client', 'console-client', 'torrent-tracker']
+    from subprojects.findAll { projectNames.contains(it.name) }.collect { it.tasks.withType(Jar) }
+    into "$buildDir"
+
+    doLast {
+        println "Project torrent:"
+        println "Created jars in $buildDir"
+    }
+}
+
+dependencies {
+    compile project(":lab-torrent:torrent-client:ui-client")
+    compile project(":lab-torrent:torrent-tracker")
+}

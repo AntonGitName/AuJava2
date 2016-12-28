@@ -1,0 +1,30 @@
+//create a single Jar with all dependencies
+jar {
+    from {
+        configurations.compile.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    manifest {
+        attributes 'Main-Class': 'ru.mit.spbau.antonpp.vcs.Application'
+    }
+}
+
+task deploy(dependsOn: jar) {
+    doLast {
+        println "Project vcs:"
+        println "Created jar in $buildDir"
+    }
+}
+
+dependencies {
+
+    testCompile group: 'commons-io', name: 'commons-io', version: '2.5'
+
+    // lombok annotations
+    compileOnly "org.projectlombok:lombok:1.16.10"
+
+    // cli
+    compile group: 'com.beust', name: 'jcommander', version: '1.48'
+
+}

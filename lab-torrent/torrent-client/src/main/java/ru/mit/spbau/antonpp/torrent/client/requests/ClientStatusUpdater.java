@@ -18,12 +18,12 @@ import java.io.IOException;
 @Slf4j
 public class ClientStatusUpdater implements Runnable {
     private final String host;
-    private final short trackerPort;
-    private final short clientPort;
+    private final int trackerPort;
+    private final int clientPort;
     private final ClientFileManager fileManager;
 
 
-    public ClientStatusUpdater(String host, short trackerPort, ClientFileManager fileManager, short clientPort) {
+    public ClientStatusUpdater(String host, int trackerPort, ClientFileManager fileManager, int clientPort) {
         this.host = host;
         this.trackerPort = trackerPort;
         this.fileManager = fileManager;

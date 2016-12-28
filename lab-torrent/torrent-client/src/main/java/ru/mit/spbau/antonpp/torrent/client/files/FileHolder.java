@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.val;
 import ru.mit.spbau.antonpp.torrent.client.exceptions.InvalidBlockException;
-import ru.mit.spbau.antonpp.torrent.commons.data.FileRecord;
+import ru.mit.spbau.antonpp.torrent.commons.data.TrackerFileRecord;
 import ru.mit.spbau.antonpp.torrent.commons.serialization.FileSerializable;
 import ru.mit.spbau.antonpp.torrent.commons.serialization.SerializationException;
 
@@ -24,11 +24,11 @@ import java.util.stream.Collectors;
  */
 public final class FileHolder implements FileSerializable {
 
+    public static final int BLOCK_SIZE = 4 * 1024;
     static final String FILE_PREFIX = "file_";
-    private static final int BLOCK_SIZE = 8 * 1024;
     private Map<Integer, Integer> blocks = new HashMap<>();
     @Getter
-    private LocalFileRecord record;
+    private ClientFileRecord record;
     private Path fileDir;
 
     private FileHolder() {
@@ -41,7 +41,7 @@ public final class FileHolder implements FileSerializable {
         return holder;
     }
 
-    synchronized static FileHolder create(Path source, Path workingDir, FileRecord record) throws IOException {
+    synchronized static FileHolder create(Path source, Path workingDir, TrackerFileRecord record) throws IOException {
         val holder = createEmpty(workingDir, record);
         val buffer = new byte[BLOCK_SIZE];
         int part = 0;
@@ -64,9 +64,9 @@ public final class FileHolder implements FileSerializable {
         return workingDir.resolve(FILE_PREFIX + id);
     }
 
-    static FileHolder createEmpty(Path workingDir, FileRecord record) throws IOException {
+    static FileHolder createEmpty(Path workingDir, TrackerFileRecord record) throws IOException {
         val holder = new FileHolder();
-        holder.record = LocalFileRecord.builder().downloadedSize(0).realFile(record).build();
+        holder.record = ClientFileRecord.builder().downloadedSize(0).realFile(record).build();
         holder.fileDir = getFileFolder(workingDir, record.getId());
         Files.createDirectories(holder.fileDir);
         holder.serialize();
@@ -97,7 +97,7 @@ public final class FileHolder implements FileSerializable {
     @Override
     public void deserialize() {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream(getFileMeta().toFile()))) {
-            record = (LocalFileRecord) os.readObject();
+            record = (ClientFileRecord) os.readObject();
             blocks = (Map<Integer, Integer>) os.readObject();
         } catch (IOException | ClassNotFoundException e) {
             throw new SerializationException("Could not deserialize FileHolder", e);
@@ -134,24 +134,17 @@ public final class FileHolder implements FileSerializable {
 
     synchronized void copyFile(Path destination) throws IOException {
         val parts = this.blocks.keySet().stream().sorted().collect(Collectors.toList());
-
-        // turns out this one is faster
         try (OutputStream bos = new FileOutputStream(destination.toFile())) {
             for (int num = 0; num < parts.size(); num++) {
                 bos.write(Files.readAllBytes(getPartPath(num)));
             }
         }
-
-//        Files.write(destination, Files.readAllBytes(getPartPath(0)));
-//        for (int num = 1; num < parts.size(); num++) {
-//            Files.write(destination, Files.readAllBytes(getPartPath(num)), StandardOpenOption.APPEND);
-//        }
     }
 
     @Data
     @Builder
-    public static final class LocalFileRecord implements Serializable {
-        private final FileRecord realFile;
+    public static final class ClientFileRecord implements Serializable {
+        private final TrackerFileRecord realFile;
         private long downloadedSize;
 
         void addSize(long sz) {

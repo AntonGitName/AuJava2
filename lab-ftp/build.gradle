@@ -1,0 +1,15 @@
+task deploy(type: Copy) {
+    dependsOn ':lab-ftp:ftp-client:jar', ':lab-ftp:ftp-server:jar'
+    from subprojects.findAll { !it.name.contains('commons') }.collect { it.tasks.withType(Jar) }
+    into "$buildDir"
+
+    doLast {
+        println "Project ftp:"
+        println "Created jars in $buildDir"
+    }
+}
+
+dependencies {
+    compile project(":lab-ftp:ftp-client")
+    compile project(":lab-ftp:ftp-server")
+}

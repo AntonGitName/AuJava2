@@ -5,6 +5,11 @@ allprojects {
     version = '1.0'
 }
 
+task deploy {
+    dependsOn ':lab-vcs:deploy',
+            ':lab-ftp:deploy',
+            ':lab-torrent:deploy'
+}
 
 subprojects {
     sourceCompatibility = 1.8
