@@ -7,5 +7,6 @@ include 'lab-vcs'
 include 'lab-ftp:ftp-commons', 'lab-ftp:ftp-client', 'lab-ftp:ftp-server'
 
 // torrent
-include 'lab-torrent:torrent-commons', 'lab-torrent:torrent-client', 'lab-torrent:torrent-tracker'
-include 'lab-torrent:torrent-client', 'lab-torrent:torrent-client:ui-client'
+include 'lab-torrent:torrent-commons', 'lab-torrent:torrent-tracker'
+include 'lab-torrent:torrent-client', 'lab-torrent:torrent-client:ui-client', 'lab-torrent:torrent-client:console-client'
+
