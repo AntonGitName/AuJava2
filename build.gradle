@@ -5,6 +5,13 @@ allprojects {
     version = '1.0'
 }
 
+project.ext {
+    targetDir = 'target'
+}
+
+task deploy {
+    dependsOn ':lab-vcs:deploy'
+}
 
 subprojects {
     sourceCompatibility = 1.8
@@ -22,5 +29,17 @@ subprojects {
         compile group: 'com.google.guava', name: 'guava', version: '15.0'
         // logging
         compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.2'
+    }
+}
+
+project(':lab-ftp:ftp-client') {
+    dependencies {
+        compile project(':lab-ftp:ftp-commons')
+    }
+}
+
+project(':lab-ftp:ftp-server') {
+    dependencies {
+        compile project(':lab-ftp:ftp-commons')
     }
 }
