@@ -1,20 +1,6 @@
-//create a single Jar with all dependencies
-jar {
-    from {
-        configurations.compile.collect {
-            it.isDirectory() ? it : zipTree(it)
-        }
-    }
-    manifest {
-        attributes 'Main-Class': 'ru.mit.spbau.antonpp.torrent.client.ui.UIApplication'
-    }
-}
-
 dependencies {
     compile project(":lab-torrent:torrent-commons")
 
-    // cli
-    compile group: 'com.beust', name: 'jcommander', version: '1.48'
     // lombok annotations
     compileOnly 'org.projectlombok:lombok:1.16.10'
 }

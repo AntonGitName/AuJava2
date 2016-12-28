@@ -33,7 +33,7 @@ import static java.awt.event.InputEvent.SHIFT_DOWN_MASK;
  * @since 14/12/2016
  */
 @Slf4j
-public class UIApplication extends JFrame {
+public class Application extends JFrame {
 
     private static final String MENU_FILE = "File";
     private static final String MENU_ITEN_UPLOAD = "Upload";
@@ -51,7 +51,7 @@ public class UIApplication extends JFrame {
     private Path workingDir;
     private InfiniteProgressPanel uploadProgress;
 
-    public UIApplication() {
+    public Application() {
         super("Torrent Client v-1.0");
 
         this.setBounds(100, 100, 740, 580);
@@ -82,7 +82,7 @@ public class UIApplication extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(UIApplication::new);
+        SwingUtilities.invokeLater(Application::new);
     }
 
     private void exitOnUnrecoverableError(String msg, Throwable e) {
@@ -308,7 +308,7 @@ public class UIApplication extends JFrame {
         @Override
         public void onFinish(int id) {
             deleteTmpFile();
-            JOptionPane.showMessageDialog(UIApplication.this, "Downloading of file with id=" + id + " has finished");
+            JOptionPane.showMessageDialog(Application.this, "Downloading of file with id=" + id + " has finished");
         }
 
         @Override
@@ -326,7 +326,7 @@ public class UIApplication extends JFrame {
         @Override
         public void noSeeds(int id) {
             deleteTmpFile();
-            JOptionPane.showMessageDialog(UIApplication.this, "Downloading of file with id=" + id +
+            JOptionPane.showMessageDialog(Application.this, "Downloading of file with id=" + id +
                     " was stopped because there is no seeds at the moment");
         }
     }
