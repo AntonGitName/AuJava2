@@ -10,20 +10,11 @@ jar {
     }
 }
 
-task createTargetDir {
-    mkdir rootProject.targetDir
-}
-
-task deploy(dependsOn: jar, type: Copy) {
-    mkdir rootProject.targetDir
-    from jar.archivePath
-    into rootProject.targetDir
-    rename "$project.name(.*)jar", "$project.name" + '.jar'
-    println "Created jar `$projectDir$File.separator$rootProject.targetDir$File.separator$project.name" + ".jar`"
-}
-
-clean.doFirst {
-    delete rootProject.targetDir
+task deploy(dependsOn: jar) {
+    doLast {
+        println "Project vcs:"
+        println "Created jar in $buildDir"
+    }
 }
 
 dependencies {
