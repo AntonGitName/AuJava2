@@ -1,0 +1,6 @@
+dependencies {
+    compile project(":lab-torrent:torrent-commons")
+
+    // lombok annotations
+    compileOnly 'org.projectlombok:lombok:1.16.10'
+}
